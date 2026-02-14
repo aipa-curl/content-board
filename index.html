@@ -1,0 +1,218 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Content Board - We Want Waste</title>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #f5f5f5; padding: 20px; }
+        h1 { text-align: center; margin-bottom: 20px; color: #333; }
+        .board { display: flex; gap: 15px; overflow-x: auto; padding-bottom: 20px; }
+        .column { min-width: 280px; max-width: 280px; background: #fff; border-radius: 12px; padding: 15px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); }
+        .column h2 { font-size: 14px; text-transform: uppercase; color: #666; margin-bottom: 15px; padding-bottom: 10px; border-bottom: 2px solid #eee; }
+        .column.ideas h2 { border-color: #9e9e9e; }
+        .column.writing h2 { border-color: #2196f3; }
+        .column.review h2 { border-color: #ff9800; }
+        .column.scheduled h2 { border-color: #4caf50; }
+        .column.published h2 { border-color: #4caf50; }
+        .card { background: #fafafa; border-radius: 8px; padding: 12px; margin-bottom: 10px; cursor: pointer; border-left: 3px solid #ddd; transition: all 0.2s; }
+        .card:hover { transform: translateY(-2px); box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
+        .card.priority-high { border-left-color: #f44336; }
+        .card.priority-medium { border-left-color: #ff9800; }
+        .card.priority-low { border-left-color: #4caf50; }
+        .card-title { font-weight: 600; font-size: 14px; margin-bottom: 8px; color: #333; }
+        .card-meta { display: flex; gap: 10px; font-size: 11px; color: #888; flex-wrap: wrap; }
+        .card-meta span { background: #eee; padding: 2px 8px; border-radius: 10px; }
+        .modal { display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); z-index: 1000; overflow-y: auto; padding: 20px; }
+        .modal.active { display: block; }
+        .modal-content { background: #fff; border-radius: 16px; max-width: 800px; margin: 20px auto; overflow: hidden; }
+        .modal-header { background: #333; color: #fff; padding: 20px; display: flex; justify-content: space-between; align-items: center; }
+        .modal-header h2 { font-size: 18px; }
+        .close-btn { background: none; border: none; color: #fff; font-size: 24px; cursor: pointer; }
+        .modal-body { padding: 20px; }
+        .tabs { display: flex; gap: 10px; margin-bottom: 20px; flex-wrap: wrap; }
+        .tab { padding: 8px 16px; border: none; background: #eee; border-radius: 20px; cursor: pointer; font-size: 13px; }
+        .tab.active { background: #333; color: #fff; }
+        .version-content { display: none; }
+        .version-content.active { display: block; }
+        .copy-box { background: #f5f5f5; padding: 15px; border-radius: 8px; white-space: pre-wrap; font-size: 13px; line-height: 1.6; margin-bottom: 15px; }
+        .copy-actions { display: flex; gap: 10px; margin-bottom: 20px; }
+        .btn { padding: 10px 20px; border: none; border-radius: 8px; cursor: pointer; font-size: 14px; }
+        .btn-primary { background: #333; color: #fff; }
+        .btn-secondary { background: #eee; color: #333; }
+        .info-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 20px; }
+        .info-item { background: #f5f5f5; padding: 12px; border-radius: 8px; }
+        .info-item label { display: block; font-size: 11px; color: #888; margin-bottom: 5px; text-transform: uppercase; }
+        .info-item span { font-size: 14px; color: #333; }
+        .loading { text-align: center; padding: 40px; color: #888; }
+        @media (max-width: 600px) {
+            .board { gap: 10px; }
+            .column { min-width: 250px; max-width: 250px; }
+            .info-grid { grid-template-columns: 1fr; }
+        }
+    </style>
+</head>
+<body>
+    <h1>📋 Content Board</h1>
+    <div class="board" id="board">
+        <div class="loading">Loading...</div>
+    </div>
+    
+    <div class="modal" id="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 id="modalTitle">Task Details</h2>
+                <button class="close-btn" onclick="closeModal()">&times;</button>
+            </div>
+            <div class="modal-body" id="modalBody">
+                <!-- Dynamic content -->
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const API_URL = '/api/tasks';
+        let tasks = [];
+        let currentTask = null;
+
+        async function loadTasks() {
+            try {
+                const res = await fetch(API_URL);
+                tasks = await res.json();
+                renderBoard();
+            } catch (e) {
+                document.getElementById('board').innerHTML = '<div class="loading">Error loading tasks. Make sure API is running.</div>';
+            }
+        }
+
+        function renderBoard() {
+            const columns = {
+                ideas: '💡 Ideas',
+                writing: '📝 Writing',
+                review: '👀 Review',
+                scheduled: '📅 Scheduled',
+                published: '✅ Published'
+            };
+            
+            let html = '';
+            for (const [col, label] of Object.entries(columns)) {
+                const colTasks = tasks.filter(t => t.column === col);
+                html += `
+                    <div class="column ${col}">
+                        <h2>${label} (${colTasks.length})</h2>
+                        ${colTasks.map(t => renderCard(t)).join('')}
+                    </div>
+                `;
+            }
+            document.getElementById('board').innerHTML = html;
+        }
+
+        function renderCard(task) {
+            const priorityClass = `priority-${task.priority || 'medium'}`;
+            return `
+                <div class="card ${priorityClass}" onclick="openTask('${task.id}')">
+                    <div class="card-title">${task.title}</div>
+                    <div class="card-meta">
+                        <span>${task.platform || 'General'}</span>
+                        <span>${task.priority || 'medium'}</span>
+                    </div>
+                </div>
+            `;
+        }
+
+        function openTask(id) {
+            currentTask = tasks.find(t => t.id === id);
+            if (!currentTask) return;
+            
+            document.getElementById('modalTitle').textContent = currentTask.title;
+            
+            const versions = currentTask.versions || {};
+            const platforms = ['linkedin', 'instagram', 'facebook', 'tiktok', 'twitter'];
+            const platformNames = { linkedin: 'LinkedIn', instagram: 'Instagram', facebook: 'Facebook', tiktok: 'TikTok', twitter: 'X/Twitter' };
+            
+            let tabsHtml = '';
+            let contentHtml = '';
+            
+            platforms.forEach((p, i) => {
+                const v = versions[p];
+                const active = i === 0 ? 'active' : '';
+                const contentActive = i === 0 ? 'active' : '';
+                tabsHtml += `<button class="tab ${active}" onclick="showTab('${p}')">${platformNames[p]}</button>`;
+                contentHtml += `
+                    <div class="version-content ${contentActive}" id="tab-${p}">
+                        ${v ? `
+                            <div class="info-grid">
+                                <div class="info-item">
+                                    <label>Cohort</label>
+                                    <span>${v.cohort || '-'}</span>
+                                </div>
+                                <div class="info-item">
+                                    <label>Angle</label>
+                                    <span>${currentTask.angles ? currentTask.angles.join(', ') : '-'}</span>
+                                </div>
+                            </div>
+                            <div class="copy-box">${v.copy || ''}</div>
+                            <div class="copy-actions">
+                                <button class="btn btn-primary" onclick="copyToClipboard('${p}')">📋 Copy ${platformNames[p]}</button>
+                            </div>
+                        ` : '<p style="color: #888;">No content for this platform</p>'}
+                    </div>
+                `;
+            });
+            
+            document.getElementById('modalBody').innerHTML = `
+                <div class="info-grid">
+                    <div class="info-item">
+                        <label>Priority</label>
+                        <span>${currentTask.priority || 'medium'}</span>
+                    </div>
+                    <div class="info-item">
+                        <label>Due</label>
+                        <span>${currentTask.due || '-'}</span>
+                    </div>
+                    <div class="info-item">
+                        <label>Source</label>
+                        <span><a href="${currentTask.sourceUrl || '#'}" target="_blank">View Source</a></span>
+                    </div>
+                    <div class="info-item">
+                        <label>Status</label>
+                        <span>${currentTask.column}</span>
+                    </div>
+                </div>
+                <div class="tabs">${tabsHtml}</div>
+                ${contentHtml}
+            `;
+            
+            document.getElementById('modal').classList.add('active');
+        }
+
+        function showTab(platform) {
+            document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+            document.querySelectorAll('.version-content').forEach(c => c.classList.remove('active'));
+            event.target.classList.add('active');
+            document.getElementById(`tab-${platform}`).classList.add('active');
+        }
+
+        function copyToClipboard(platform) {
+            const v = currentTask.versions?.[platform];
+            if (v?.copy) {
+                navigator.clipboard.writeText(v.copy);
+                alert('Copied to clipboard!');
+            }
+        }
+
+        function closeModal() {
+            document.getElementById('modal').classList.remove('active');
+            currentTask = null;
+        }
+
+        document.getElementById('modal').addEventListener('click', (e) => {
+            if (e.target.id === 'modal') closeModal();
+        });
+
+        loadTasks();
+        setInterval(loadTasks, 30000); // Refresh every 30s
+    </script>
+</body>
+</html>
