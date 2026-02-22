@@ -287,7 +287,7 @@ localStorage.setItem('SUPABASE_KEY', 'your-anon-key-here');</pre>
         async function loadDashboard() {
             try {
                 const { data: calls, error } = await supabase
-                    .from('voice_transcriptions')
+                    .from('call_insights')
                     .select('*')
                     .order('created_at', { ascending: false });
 
