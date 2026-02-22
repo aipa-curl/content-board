@@ -33,7 +33,7 @@
         .badge-negative { background: #fee2e2; color: #991b1b; }
         .badge-neutral { background: #e5e7eb; color: #374151; }
         .loading { text-align: center; color: white; font-size: 1.2em; padding: 40px; }
-        .error-box { background: white; color: #991b1b; padding: 30px; border-radius: 12px; margin: 20px 0; text-align: center; max-width: 600px; margin: 0 auto; }
+        .error-box { background: white; color: #991b1b; padding: 30px; border-radius: 12px; margin: 20px auto; text-align: center; max-width: 600px; }
         .error-box h2 { color: #ef4444; margin-bottom: 15px; }
         .btn { display: inline-block; margin-top: 20px; padding: 12px 24px; background: #667eea; color: white; text-decoration: none; border-radius: 8px; font-weight: 600; }
         .btn:hover { background: #5568d3; }
@@ -108,11 +108,15 @@
     </div>
 
     <script>
-        // Declare at top level so it's accessible everywhere
-        let supabase = null;
+        console.log('🚀 Dashboard script starting...');
         
+        // Get credentials
         const SUPABASE_URL = localStorage.getItem('SUPABASE_URL');
         const SUPABASE_KEY = localStorage.getItem('SUPABASE_KEY');
+        
+        console.log('Checking credentials...');
+        console.log('URL:', SUPABASE_URL ? SUPABASE_URL.substring(0, 30) + '...' : 'NOT SET');
+        console.log('Key:', SUPABASE_KEY ? SUPABASE_KEY.substring(0, 20) + '...' : 'NOT SET');
         
         const chartColors = {
             positive: '#10b981',
@@ -124,8 +128,18 @@
             pink: '#ec4899'
         };
 
-        // Initialize
-        if (!SUPABASE_URL || !SUPABASE_KEY) {
+        // Check for Supabase library
+        if (typeof window.supabase === 'undefined') {
+            console.error('❌ Supabase library not loaded');
+            document.getElementById('loading').style.display = 'none';
+            document.getElementById('error').style.display = 'block';
+            document.getElementById('error').innerHTML = `
+                <h2>❌ Library Error</h2>
+                <p>Supabase library failed to load. Check your internet connection.</p>
+                <a href="./" class="btn">← Back to Kanban</a>
+            `;
+        } else if (!SUPABASE_URL || !SUPABASE_KEY) {
+            console.error('❌ Missing credentials');
             document.getElementById('loading').style.display = 'none';
             document.getElementById('error').style.display = 'block';
             document.getElementById('error').innerHTML = `
@@ -134,42 +148,57 @@
                 <a href="./auto-config.html" class="btn">→ Configure Now</a>
             `;
         } else {
-            supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
-            loadDashboard();
+            console.log('✅ Credentials found, initializing...');
+            const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+            console.log('✅ Supabase client created');
+            loadDashboard(supabase);
         }
 
-        async function loadDashboard() {
+        async function loadDashboard(supabase) {
+            console.log('📊 Loading dashboard data...');
             try {
                 const { data: calls, error } = await supabase
                     .from('call_insights')
                     .select('*')
                     .order('created_at', { ascending: false });
 
-                if (error) throw error;
+                if (error) {
+                    console.error('❌ Query error:', error);
+                    throw error;
+                }
+
+                console.log(`✅ Fetched ${calls.length} calls`);
 
                 if (calls.length === 0) {
+                    console.warn('⚠️ No data in database');
                     document.getElementById('loading').style.display = 'none';
                     document.getElementById('error').style.display = 'block';
                     document.getElementById('error').innerHTML = `
                         <h2>📭 No Data Yet</h2>
                         <p>No call insights have been recorded yet.</p>
+                        <a href="./" class="btn">← Back to Kanban</a>
                     `;
                     return;
                 }
 
+                console.log('📈 Updating stats...');
                 updateStats(calls);
+                console.log('📊 Creating charts...');
                 updateCharts(calls);
+                console.log('📋 Updating table...');
                 updateTable(calls);
 
                 document.getElementById('loading').style.display = 'none';
                 document.getElementById('dashboard').style.display = 'block';
+                console.log('✅ Dashboard loaded successfully!');
             } catch (error) {
-                console.error('Dashboard error:', error);
+                console.error('💥 Dashboard error:', error);
                 document.getElementById('loading').style.display = 'none';
                 document.getElementById('error').style.display = 'block';
                 document.getElementById('error').innerHTML = `
                     <h2>❌ Error Loading Dashboard</h2>
                     <p style="margin-bottom: 10px;">${error.message}</p>
+                    <p style="font-size: 0.9em; color: #666; margin-bottom: 15px;">Check browser console for details</p>
                     <a href="./auto-config.html" class="btn">→ Reconfigure</a>
                 `;
             }

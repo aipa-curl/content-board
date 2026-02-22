@@ -1,17 +1,76 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Auto-configuring...</title>
-    <script>
-        // Auto-configure and redirect
-        localStorage.setItem('SUPABASE_URL', 'https://zppiksmyqnigiziqsigq.supabase.co');
-        localStorage.setItem('SUPABASE_KEY', 'sb_publishable_4xGNFr6q9Fv-_4tg4SVYRw_0D4nnSGz');
-        
-        // Redirect to insights dashboard
-        window.location.href = './insights.html';
-    </script>
+    <title>Configuring...</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0;
+            color: white;
+        }
+        .container {
+            text-align: center;
+            background: rgba(255, 255, 255, 0.1);
+            padding: 40px;
+            border-radius: 12px;
+            backdrop-filter: blur(10px);
+        }
+        h1 { font-size: 2em; margin-bottom: 10px; }
+        p { font-size: 1.2em; opacity: 0.9; }
+        .status { margin-top: 20px; font-size: 0.9em; }
+    </style>
 </head>
 <body>
-    <p>Configuring dashboard...</p>
+    <div class="container">
+        <h1>🔧 Configuring Dashboard</h1>
+        <p id="status">Setting up Supabase credentials...</p>
+        <div class="status" id="debug"></div>
+    </div>
+    
+    <script>
+        const statusEl = document.getElementById('status');
+        const debugEl = document.getElementById('debug');
+        
+        try {
+            // Set credentials
+            localStorage.setItem('SUPABASE_URL', 'https://zppiksmyqnigiziqsigq.supabase.co');
+            localStorage.setItem('SUPABASE_KEY', 'sb_publishable_4xGNFr6q9Fv-_4tg4SVYRw_0D4nnSGz');
+            
+            // Verify they're set
+            const url = localStorage.getItem('SUPABASE_URL');
+            const key = localStorage.getItem('SUPABASE_KEY');
+            
+            if (url && key) {
+                statusEl.textContent = '✅ Configuration successful!';
+                debugEl.innerHTML = `
+                    URL: ${url.substring(0, 30)}...<br>
+                    Key: ${key.substring(0, 20)}...<br>
+                    <br>
+                    Redirecting to dashboard in 2 seconds...
+                `;
+                
+                // Redirect after a short delay to ensure localStorage is persisted
+                setTimeout(() => {
+                    window.location.href = './insights.html';
+                }, 2000);
+            } else {
+                throw new Error('Failed to save credentials to localStorage');
+            }
+        } catch (error) {
+            statusEl.textContent = '❌ Configuration failed';
+            debugEl.innerHTML = `
+                Error: ${error.message}<br>
+                <br>
+                <a href="./insights.html" style="color: white; text-decoration: underline;">
+                    Try continuing anyway →
+                </a>
+            `;
+        }
+    </script>
 </body>
 </html>
