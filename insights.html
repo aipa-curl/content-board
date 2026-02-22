@@ -1,0 +1,418 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Call Insights Dashboard</title>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+        
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+        
+        .header {
+            text-align: center;
+            color: white;
+            margin-bottom: 30px;
+        }
+        
+        .header h1 {
+            font-size: 2.5em;
+            margin-bottom: 10px;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.2);
+        }
+        
+        .header p {
+            font-size: 1.1em;
+            opacity: 0.9;
+        }
+        
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+        
+        .stat-card {
+            background: white;
+            border-radius: 12px;
+            padding: 25px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+        }
+        
+        .stat-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 8px 12px rgba(0,0,0,0.15);
+        }
+        
+        .stat-card h3 {
+            color: #6b7280;
+            font-size: 0.9em;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 10px;
+        }
+        
+        .stat-value {
+            font-size: 2.5em;
+            font-weight: 700;
+            color: #1f2937;
+            margin-bottom: 5px;
+        }
+        
+        .stat-label {
+            font-size: 0.85em;
+            color: #9ca3af;
+        }
+        
+        .charts-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+        
+        .chart-card {
+            background: white;
+            border-radius: 12px;
+            padding: 25px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+        
+        .chart-card h3 {
+            color: #1f2937;
+            margin-bottom: 20px;
+            font-size: 1.2em;
+        }
+        
+        .table-card {
+            background: white;
+            border-radius: 12px;
+            padding: 25px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            overflow-x: auto;
+        }
+        
+        .table-card h3 {
+            color: #1f2937;
+            margin-bottom: 20px;
+            font-size: 1.2em;
+        }
+        
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        
+        th {
+            background: #f3f4f6;
+            padding: 12px;
+            text-align: left;
+            font-weight: 600;
+            color: #374151;
+            border-bottom: 2px solid #e5e7eb;
+        }
+        
+        td {
+            padding: 12px;
+            border-bottom: 1px solid #e5e7eb;
+            color: #6b7280;
+        }
+        
+        tr:hover {
+            background: #f9fafb;
+        }
+        
+        .badge {
+            display: inline-block;
+            padding: 4px 12px;
+            border-radius: 12px;
+            font-size: 0.85em;
+            font-weight: 600;
+        }
+        
+        .badge-positive { background: #d1fae5; color: #065f46; }
+        .badge-negative { background: #fee2e2; color: #991b1b; }
+        .badge-neutral { background: #e5e7eb; color: #374151; }
+        .badge-mixed { background: #fef3c7; color: #92400e; }
+        
+        .loading {
+            text-align: center;
+            color: white;
+            font-size: 1.2em;
+            padding: 40px;
+        }
+        
+        .error {
+            background: #fee2e2;
+            color: #991b1b;
+            padding: 20px;
+            border-radius: 12px;
+            margin: 20px 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>📞 Call Insights Dashboard</h1>
+            <p>Real-time analysis of voice transcriptions</p>
+        </div>
+        
+        <div id="config-notice" style="background: white; border-radius: 12px; padding: 20px; margin-bottom: 20px; display: none;">
+            <h3 style="color: #ef4444; margin-bottom: 10px;">⚠️ Configuration Required</h3>
+            <p style="color: #6b7280; margin-bottom: 15px;">Please add your Supabase credentials to view the dashboard:</p>
+            <ol style="color: #6b7280; margin-left: 20px;">
+                <li>Open browser DevTools (F12)</li>
+                <li>Go to Console tab</li>
+                <li>Set your credentials:
+                    <pre style="background: #f3f4f6; padding: 10px; border-radius: 6px; margin: 10px 0;">
+localStorage.setItem('SUPABASE_URL', 'https://your-project.supabase.co');
+localStorage.setItem('SUPABASE_KEY', 'your-anon-key-here');</pre>
+                </li>
+                <li>Refresh the page</li>
+            </ol>
+        </div>
+        
+        <div id="loading" class="loading">Loading dashboard...</div>
+        <div id="error" class="error" style="display: none;"></div>
+        
+        <div id="dashboard" style="display: none;">
+            <div class="stats-grid">
+                <div class="stat-card">
+                    <h3>Total Calls</h3>
+                    <div class="stat-value" id="totalCalls">0</div>
+                    <div class="stat-label">Analyzed</div>
+                </div>
+                <div class="stat-card">
+                    <h3>Avg Duration</h3>
+                    <div class="stat-value" id="avgDuration">0s</div>
+                    <div class="stat-label">Per call</div>
+                </div>
+                <div class="stat-card">
+                    <h3>Positive Sentiment</h3>
+                    <div class="stat-value" id="positivePct">0%</div>
+                    <div class="stat-label">Of all calls</div>
+                </div>
+                <div class="stat-card">
+                    <h3>High Priority</h3>
+                    <div class="stat-value" id="highPriority">0</div>
+                    <div class="stat-label">Requiring action</div>
+                </div>
+            </div>
+            
+            <div class="charts-grid">
+                <div class="chart-card">
+                    <h3>Sentiment Distribution</h3>
+                    <canvas id="sentimentChart"></canvas>
+                </div>
+                <div class="chart-card">
+                    <h3>Call Outcomes</h3>
+                    <canvas id="outcomeChart"></canvas>
+                </div>
+                <div class="chart-card">
+                    <h3>Topic Segments</h3>
+                    <canvas id="segmentChart"></canvas>
+                </div>
+                <div class="chart-card">
+                    <h3>Priority Levels</h3>
+                    <canvas id="priorityChart"></canvas>
+                </div>
+            </div>
+            
+            <div class="table-card">
+                <h3>Recent Calls</h3>
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Date</th>
+                            <th>Topic</th>
+                            <th>Sentiment</th>
+                            <th>Outcome</th>
+                            <th>Duration</th>
+                            <th>Priority</th>
+                        </tr>
+                    </thead>
+                    <tbody id="callsTable">
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Check for Supabase config in localStorage
+        const SUPABASE_URL = localStorage.getItem('SUPABASE_URL');
+        const SUPABASE_KEY = localStorage.getItem('SUPABASE_KEY');
+        
+        if (!SUPABASE_URL || !SUPABASE_KEY) {
+            document.getElementById('loading').style.display = 'none';
+            document.getElementById('config-notice').style.display = 'block';
+            throw new Error('Supabase credentials not configured');
+        }
+        
+        const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+        let sentimentChart, outcomeChart, segmentChart, priorityChart;
+
+        const chartColors = {
+            positive: '#10b981',
+            neutral: '#6b7280',
+            negative: '#ef4444',
+            mixed: '#f59e0b',
+            blue: '#3b82f6',
+            purple: '#8b5cf6',
+            cyan: '#06b6d4',
+            pink: '#ec4899'
+        };
+
+        async function loadDashboard() {
+            try {
+                const { data: calls, error } = await supabase
+                    .from('voice_transcriptions')
+                    .select('*')
+                    .order('created_at', { ascending: false });
+
+                if (error) throw error;
+
+                updateStats(calls);
+                updateCharts(calls);
+                updateTable(calls);
+
+                document.getElementById('loading').style.display = 'none';
+                document.getElementById('dashboard').style.display = 'block';
+            } catch (error) {
+                document.getElementById('loading').style.display = 'none';
+                document.getElementById('error').style.display = 'block';
+                document.getElementById('error').textContent = `Error: ${error.message}`;
+            }
+        }
+
+        function updateStats(calls) {
+            const totalCalls = calls.length;
+            const avgDuration = calls.reduce((sum, call) => sum + (call.duration_seconds || 0), 0) / totalCalls || 0;
+            const positiveCalls = calls.filter(c => c.sentiment === 'positive').length;
+            const highPriorityCalls = calls.filter(c => c.priority === 'high').length;
+
+            document.getElementById('totalCalls').textContent = totalCalls;
+            document.getElementById('avgDuration').textContent = Math.round(avgDuration) + 's';
+            document.getElementById('positivePct').textContent = Math.round((positiveCalls / totalCalls) * 100) + '%';
+            document.getElementById('highPriority').textContent = highPriorityCalls;
+        }
+
+        function updateCharts(calls) {
+            const sentimentCounts = {
+                positive: calls.filter(c => c.sentiment === 'positive').length,
+                neutral: calls.filter(c => c.sentiment === 'neutral').length,
+                negative: calls.filter(c => c.sentiment === 'negative').length,
+                mixed: calls.filter(c => c.sentiment === 'mixed').length
+            };
+
+            sentimentChart = new Chart(document.getElementById('sentimentChart'), {
+                type: 'doughnut',
+                data: {
+                    labels: ['Positive', 'Neutral', 'Negative', 'Mixed'],
+                    datasets: [{
+                        data: [sentimentCounts.positive, sentimentCounts.neutral, sentimentCounts.negative, sentimentCounts.mixed],
+                        backgroundColor: [chartColors.positive, chartColors.neutral, chartColors.negative, chartColors.mixed]
+                    }]
+                }
+            });
+
+            const outcomeCounts = {};
+            calls.forEach(call => {
+                const outcome = call.outcome || 'unknown';
+                outcomeCounts[outcome] = (outcomeCounts[outcome] || 0) + 1;
+            });
+
+            outcomeChart = new Chart(document.getElementById('outcomeChart'), {
+                type: 'bar',
+                data: {
+                    labels: Object.keys(outcomeCounts),
+                    datasets: [{
+                        label: 'Count',
+                        data: Object.values(outcomeCounts),
+                        backgroundColor: chartColors.blue
+                    }]
+                }
+            });
+
+            const segmentCounts = {};
+            calls.forEach(call => {
+                if (call.segments && Array.isArray(call.segments)) {
+                    call.segments.forEach(seg => {
+                        const topic = seg.topic || 'general';
+                        segmentCounts[topic] = (segmentCounts[topic] || 0) + 1;
+                    });
+                }
+            });
+
+            segmentChart = new Chart(document.getElementById('segmentChart'), {
+                type: 'bar',
+                data: {
+                    labels: Object.keys(segmentCounts),
+                    datasets: [{
+                        label: 'Segments',
+                        data: Object.values(segmentCounts),
+                        backgroundColor: chartColors.purple
+                    }]
+                },
+                options: {
+                    indexAxis: 'y'
+                }
+            });
+
+            const priorityCounts = {
+                low: calls.filter(c => c.priority === 'low').length,
+                medium: calls.filter(c => c.priority === 'medium').length,
+                high: calls.filter(c => c.priority === 'high').length
+            };
+
+            priorityChart = new Chart(document.getElementById('priorityChart'), {
+                type: 'pie',
+                data: {
+                    labels: ['Low', 'Medium', 'High'],
+                    datasets: [{
+                        data: [priorityCounts.low, priorityCounts.medium, priorityCounts.high],
+                        backgroundColor: [chartColors.positive, chartColors.neutral, chartColors.negative]
+                    }]
+                }
+            });
+        }
+
+        function updateTable(calls) {
+            const tableBody = document.getElementById('callsTable');
+            tableBody.innerHTML = calls.slice(0, 10).map(call => `
+                <tr>
+                    <td>${new Date(call.created_at).toLocaleString()}</td>
+                    <td>${call.topic || 'N/A'}</td>
+                    <td><span class="badge badge-${call.sentiment}">${call.sentiment || 'N/A'}</span></td>
+                    <td>${call.outcome || 'N/A'}</td>
+                    <td>${call.duration_seconds || 0}s</td>
+                    <td>${call.priority || 'N/A'}</td>
+                </tr>
+            `).join('');
+        }
+
+        loadDashboard();
+    </script>
+</body>
+</html>
