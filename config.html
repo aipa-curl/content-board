@@ -1,0 +1,184 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard Configuration</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+        .container {
+            background: white;
+            border-radius: 16px;
+            padding: 40px;
+            max-width: 500px;
+            width: 100%;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.2);
+        }
+        h1 {
+            color: #1f2937;
+            margin-bottom: 10px;
+            font-size: 2em;
+        }
+        p {
+            color: #6b7280;
+            margin-bottom: 30px;
+        }
+        label {
+            display: block;
+            color: #374151;
+            font-weight: 600;
+            margin-bottom: 8px;
+            font-size: 0.9em;
+        }
+        input {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #e5e7eb;
+            border-radius: 8px;
+            font-size: 1em;
+            margin-bottom: 20px;
+            transition: border-color 0.3s;
+        }
+        input:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+        button {
+            width: 100%;
+            padding: 14px;
+            background: #667eea;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 1em;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background 0.3s;
+        }
+        button:hover {
+            background: #5568d3;
+        }
+        button:disabled {
+            background: #9ca3af;
+            cursor: not-allowed;
+        }
+        .success {
+            background: #10b981;
+            color: white;
+            padding: 12px;
+            border-radius: 8px;
+            margin-top: 20px;
+            display: none;
+        }
+        .success.show {
+            display: block;
+        }
+        .links {
+            margin-top: 30px;
+            padding-top: 20px;
+            border-top: 2px solid #e5e7eb;
+        }
+        .links a {
+            display: block;
+            color: #667eea;
+            text-decoration: none;
+            margin-bottom: 10px;
+            font-weight: 500;
+        }
+        .links a:hover {
+            text-decoration: underline;
+        }
+        .note {
+            background: #fef3c7;
+            color: #92400e;
+            padding: 12px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            font-size: 0.9em;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔐 Dashboard Setup</h1>
+        <p>Configure your Supabase credentials to view the Call Insights Dashboard</p>
+        
+        <div class="note">
+            💡 <strong>Tip:</strong> Find these in your Supabase project settings → API
+        </div>
+        
+        <form id="configForm">
+            <label for="url">Supabase URL</label>
+            <input 
+                type="url" 
+                id="url" 
+                placeholder="https://your-project.supabase.co"
+                value="https://zppiksmyqnigiziqsigq.supabase.co"
+                required
+            >
+            
+            <label for="key">Supabase Anon Key</label>
+            <input 
+                type="text" 
+                id="key" 
+                placeholder="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+                required
+            >
+            
+            <button type="submit">💾 Save & Go to Dashboard</button>
+        </form>
+        
+        <div class="success" id="success">
+            ✅ Configuration saved! Redirecting to dashboard...
+        </div>
+        
+        <div class="links">
+            <a href="./index.html">📋 Content Kanban Board</a>
+            <a href="./insights.html">📞 Call Insights Dashboard</a>
+        </div>
+    </div>
+
+    <script>
+        const form = document.getElementById('configForm');
+        const success = document.getElementById('success');
+
+        form.addEventListener('submit', (e) => {
+            e.preventDefault();
+            
+            const url = document.getElementById('url').value.trim();
+            const key = document.getElementById('key').value.trim();
+            
+            // Save to localStorage
+            localStorage.setItem('SUPABASE_URL', url);
+            localStorage.setItem('SUPABASE_KEY', key);
+            
+            // Show success message
+            success.classList.add('show');
+            form.querySelector('button').disabled = true;
+            
+            // Redirect after 1.5 seconds
+            setTimeout(() => {
+                window.location.href = './insights.html';
+            }, 1500);
+        });
+
+        // Pre-fill if already configured
+        window.addEventListener('DOMContentLoaded', () => {
+            const savedUrl = localStorage.getItem('SUPABASE_URL');
+            const savedKey = localStorage.getItem('SUPABASE_KEY');
+            
+            if (savedUrl) document.getElementById('url').value = savedUrl;
+            if (savedKey) document.getElementById('key').value = savedKey;
+        });
+    </script>
+</body>
+</html>
