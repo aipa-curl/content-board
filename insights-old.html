@@ -33,10 +33,7 @@
         .badge-negative { background: #fee2e2; color: #991b1b; }
         .badge-neutral { background: #e5e7eb; color: #374151; }
         .loading { text-align: center; color: white; font-size: 1.2em; padding: 40px; }
-        .error-box { background: white; color: #991b1b; padding: 30px; border-radius: 12px; margin: 20px 0; text-align: center; max-width: 600px; margin: 0 auto; }
-        .error-box h2 { color: #ef4444; margin-bottom: 15px; }
-        .btn { display: inline-block; margin-top: 20px; padding: 12px 24px; background: #667eea; color: white; text-decoration: none; border-radius: 8px; font-weight: 600; }
-        .btn:hover { background: #5568d3; }
+        .error { background: #fee2e2; color: #991b1b; padding: 20px; border-radius: 12px; margin: 20px 0; }
     </style>
 </head>
 <body>
@@ -47,7 +44,7 @@
         </div>
         
         <div id="loading" class="loading">Loading dashboard...</div>
-        <div id="error" class="error-box" style="display: none;"></div>
+        <div id="error" class="error" style="display: none;"></div>
         
         <div id="dashboard" style="display: none;">
             <div class="stats-grid">
@@ -114,16 +111,11 @@
         if (!SUPABASE_URL || !SUPABASE_KEY) {
             document.getElementById('loading').style.display = 'none';
             document.getElementById('error').style.display = 'block';
-            document.getElementById('error').innerHTML = `
-                <h2>⚠️ Configuration Required</h2>
-                <p style="margin-bottom: 10px;">Your Supabase credentials need to be configured first.</p>
-                <a href="./auto-config.html" class="btn">→ Configure Now</a>
-            `;
-        } else {
-            const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
-            loadDashboard();
+            document.getElementById('error').innerHTML = '<strong>⚠️ Configuration Required</strong><br>Please visit <a href="./auto-config.html" style="color: #991b1b; text-decoration: underline;">auto-config.html</a> first.';
+            throw new Error('Supabase credentials not configured');
         }
         
+        const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
         const chartColors = {
             positive: '#10b981',
             neutral: '#6b7280',
@@ -143,16 +135,6 @@
 
                 if (error) throw error;
 
-                if (calls.length === 0) {
-                    document.getElementById('loading').style.display = 'none';
-                    document.getElementById('error').style.display = 'block';
-                    document.getElementById('error').innerHTML = `
-                        <h2>📭 No Data Yet</h2>
-                        <p>No call insights have been recorded yet. Start analyzing calls to see data here!</p>
-                    `;
-                    return;
-                }
-
                 updateStats(calls);
                 updateCharts(calls);
                 updateTable(calls);
@@ -160,14 +142,9 @@
                 document.getElementById('loading').style.display = 'none';
                 document.getElementById('dashboard').style.display = 'block';
             } catch (error) {
-                console.error('Dashboard error:', error);
                 document.getElementById('loading').style.display = 'none';
                 document.getElementById('error').style.display = 'block';
-                document.getElementById('error').innerHTML = `
-                    <h2>❌ Error Loading Dashboard</h2>
-                    <p style="margin-bottom: 10px;">${error.message}</p>
-                    <a href="./auto-config.html" class="btn">→ Reconfigure</a>
-                `;
+                document.getElementById('error').textContent = `Error: ${error.message}`;
             }
         }
 
@@ -282,6 +259,8 @@
                 `;
             }).join('');
         }
+
+        loadDashboard();
     </script>
 </body>
 </html>

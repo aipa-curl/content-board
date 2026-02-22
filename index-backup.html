@@ -16,10 +16,8 @@
         .column.review h2 { border-color: #ff9800; }
         .column.scheduled h2 { border-color: #4caf50; }
         .column.published h2 { border-color: #4caf50; }
-        .column.drag-over { background: #e3f2fd; }
-        .card { background: #fafafa; border-radius: 8px; padding: 12px; margin-bottom: 10px; cursor: move; border-left: 3px solid #ddd; transition: all 0.2s; }
+        .card { background: #fafafa; border-radius: 8px; padding: 12px; margin-bottom: 10px; cursor: pointer; border-left: 3px solid #ddd; transition: all 0.2s; }
         .card:hover { transform: translateY(-2px); box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
-        .card.dragging { opacity: 0.5; }
         .card.priority-high { border-left-color: #f44336; }
         .card.priority-medium { border-left-color: #ff9800; }
         .card.priority-low { border-left-color: #4caf50; }
@@ -67,7 +65,9 @@
                 <h2 id="modalTitle">Task Details</h2>
                 <button class="close-btn" onclick="closeModal()">&times;</button>
             </div>
-            <div class="modal-body" id="modalBody"></div>
+            <div class="modal-body" id="modalBody">
+                <!-- Dynamic content -->
+            </div>
         </div>
     </div>
 
@@ -75,24 +75,14 @@
         const API_URL = './tasks.json';
         let tasks = [];
         let currentTask = null;
-        let draggedElement = null;
 
         async function loadTasks() {
             try {
                 const res = await fetch(API_URL);
-                const loadedTasks = await res.json();
-                
-                // Check for saved changes in localStorage
-                const savedTasks = localStorage.getItem('tasks');
-                if (savedTasks) {
-                    tasks = JSON.parse(savedTasks);
-                } else {
-                    tasks = loadedTasks;
-                }
-                
+                tasks = await res.json();
                 renderBoard();
             } catch (e) {
-                document.getElementById('board').innerHTML = '<div class="loading">Error loading tasks.</div>';
+                document.getElementById('board').innerHTML = '<div class="loading">Error loading tasks. Make sure API is running.</div>';
             }
         }
 
@@ -109,7 +99,7 @@
             for (const [col, label] of Object.entries(columns)) {
                 const colTasks = tasks.filter(t => t.column === col);
                 html += `
-                    <div class="column ${col}" data-column="${col}" ondrop="drop(event)" ondragover="allowDrop(event)" ondragleave="dragLeave(event)">
+                    <div class="column ${col}">
                         <h2>${label} (${colTasks.length})</h2>
                         ${colTasks.map(t => renderCard(t)).join('')}
                     </div>
@@ -121,12 +111,7 @@
         function renderCard(task) {
             const priorityClass = `priority-${task.priority || 'medium'}`;
             return `
-                <div class="card ${priorityClass}" 
-                     draggable="true" 
-                     ondragstart="dragStart(event)" 
-                     ondragend="dragEnd(event)"
-                     onclick="openTask('${task.id}')"
-                     data-id="${task.id}">
+                <div class="card ${priorityClass}" onclick="openTask('${task.id}')">
                     <div class="card-title">${task.title}</div>
                     <div class="card-meta">
                         <span>${task.platform || 'General'}</span>
@@ -134,50 +119,6 @@
                     </div>
                 </div>
             `;
-        }
-
-        function dragStart(e) {
-            draggedElement = e.target;
-            e.target.classList.add('dragging');
-            e.dataTransfer.effectAllowed = 'move';
-            e.dataTransfer.setData('text/html', e.target.innerHTML);
-        }
-
-        function dragEnd(e) {
-            e.target.classList.remove('dragging');
-            document.querySelectorAll('.column').forEach(col => col.classList.remove('drag-over'));
-        }
-
-        function allowDrop(e) {
-            e.preventDefault();
-            e.target.closest('.column').classList.add('drag-over');
-        }
-
-        function dragLeave(e) {
-            e.target.closest('.column').classList.remove('drag-over');
-        }
-
-        function drop(e) {
-            e.preventDefault();
-            const column = e.target.closest('.column');
-            column.classList.remove('drag-over');
-            
-            if (!draggedElement) return;
-            
-            const taskId = draggedElement.dataset.id;
-            const newColumn = column.dataset.column;
-            
-            // Update task column
-            const task = tasks.find(t => t.id === taskId);
-            if (task) {
-                task.column = newColumn;
-                
-                // Save to localStorage
-                localStorage.setItem('tasks', JSON.stringify(tasks));
-                
-                // Re-render board
-                renderBoard();
-            }
         }
 
         function openTask(id) {
@@ -207,29 +148,38 @@
                                     <span>${v.cohort || '-'}</span>
                                 </div>
                                 <div class="info-item">
-                                    <label>Platform</label>
-                                    <span>${platformNames[p]}</span>
-                                </div>
-                                <div class="info-item">
-                                    <label>Hook Type</label>
-                                    <span>${v.hook_type || '-'}</span>
-                                </div>
-                                <div class="info-item">
-                                    <label>CTA Type</label>
-                                    <span>${v.cta_type || '-'}</span>
+                                    <label>Angle</label>
+                                    <span>${currentTask.angles ? currentTask.angles.join(', ') : '-'}</span>
                                 </div>
                             </div>
-                            <div class="copy-box">${v.copy || 'No copy available'}</div>
+                            <div class="copy-box">${v.copy || ''}</div>
                             <div class="copy-actions">
-                                <button class="btn btn-primary" onclick="copyCopy('${p}')">Copy Text</button>
-                                ${v.visual_url ? `<a href="${v.visual_url}" target="_blank" class="btn btn-secondary">View Visual</a>` : ''}
+                                <button class="btn btn-primary" onclick="copyToClipboard('${p}')">📋 Copy ${platformNames[p]}</button>
                             </div>
-                        ` : '<p style="color: #999;">No content for this platform yet</p>'}
+                        ` : '<p style="color: #888;">No content for this platform</p>'}
                     </div>
                 `;
             });
             
             document.getElementById('modalBody').innerHTML = `
+                <div class="info-grid">
+                    <div class="info-item">
+                        <label>Priority</label>
+                        <span>${currentTask.priority || 'medium'}</span>
+                    </div>
+                    <div class="info-item">
+                        <label>Due</label>
+                        <span>${currentTask.due || '-'}</span>
+                    </div>
+                    <div class="info-item">
+                        <label>Source</label>
+                        <span><a href="${currentTask.sourceUrl || '#'}" target="_blank">View Source</a></span>
+                    </div>
+                    <div class="info-item">
+                        <label>Status</label>
+                        <span>${currentTask.column}</span>
+                    </div>
+                </div>
                 <div class="tabs">${tabsHtml}</div>
                 ${contentHtml}
             `;
@@ -240,30 +190,29 @@
         function showTab(platform) {
             document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
             document.querySelectorAll('.version-content').forEach(c => c.classList.remove('active'));
-            
             event.target.classList.add('active');
-            document.getElementById('tab-' + platform).classList.add('active');
+            document.getElementById(`tab-${platform}`).classList.add('active');
         }
 
-        function copyCopy(platform) {
-            const copyText = currentTask.versions[platform]?.copy;
-            if (copyText) {
-                navigator.clipboard.writeText(copyText);
+        function copyToClipboard(platform) {
+            const v = currentTask.versions?.[platform];
+            if (v?.copy) {
+                navigator.clipboard.writeText(v.copy);
                 alert('Copied to clipboard!');
             }
         }
 
         function closeModal() {
             document.getElementById('modal').classList.remove('active');
+            currentTask = null;
         }
 
-        // Close modal on outside click
-        document.getElementById('modal').addEventListener('click', function(e) {
-            if (e.target === this) closeModal();
+        document.getElementById('modal').addEventListener('click', (e) => {
+            if (e.target.id === 'modal') closeModal();
         });
 
-        // Load tasks on page load
         loadTasks();
+        setInterval(loadTasks, 30000); // Refresh every 30s
     </script>
 </body>
 </html>
