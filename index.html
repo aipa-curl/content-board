@@ -4,7 +4,6 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Content Board - We Want Waste</title>
-    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <style>
         * { box-sizing: border-box; margin: 0; padding: 0; }
         body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #f5f5f5; padding: 20px; }
@@ -21,13 +20,12 @@
         .column.published h2 { border-color: #4caf50; }
         .card { background: #fafafa; border-radius: 8px; padding: 12px; margin-bottom: 10px; cursor: pointer; border-left: 3px solid #ddd; transition: all 0.2s; }
         .card:hover { transform: translateY(-2px); box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
+        .card.high-priority { border-left-color: #f44336; }
         .card-title { font-weight: 600; font-size: 14px; margin-bottom: 8px; color: #333; }
         .card-meta { display: flex; gap: 10px; font-size: 11px; color: #888; flex-wrap: wrap; }
         .card-meta span { background: #eee; padding: 2px 8px; border-radius: 10px; }
         .loading { text-align: center; padding: 40px; color: #888; }
         .error { text-align: center; padding: 40px; color: #f44336; background: #ffebee; border-radius: 8px; margin: 20px; }
-        .config-prompt { text-align: center; padding: 40px; background: #fff3cd; border-radius: 8px; margin: 20px; }
-        .config-prompt a { color: #856404; font-weight: bold; }
         @media (max-width: 600px) {
             .board { gap: 10px; }
             .column { min-width: 250px; max-width: 250px; }
@@ -44,39 +42,26 @@
     </div>
 
     <script>
-        const SUPABASE_URL = localStorage.getItem('SUPABASE_URL') || 'https://zppiksmyqnigiziqsigq.supabase.co';
-        const SUPABASE_KEY = localStorage.getItem('SUPABASE_KEY') || 'sb_publishable_4xGNFr6q9Fv-_4tg4SVYRw_0D4nnSGz';
+        const SUPABASE_URL = 'https://zppiksmyqnigiziqsigq.supabase.co';
+        const SUPABASE_KEY = 'sb_publishable_4xGNFr6q9Fv-_4tg4SVYRw_0D4nnSGz';
         
-        console.log('Initializing Supabase...');
-        console.log('URL:', SUPABASE_URL);
-        
-        let supabase;
-        try {
-            supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
-        } catch (e) {
-            console.error('Failed to create Supabase client:', e);
-            document.getElementById('board').innerHTML = `
-                <div class="error">
-                    <h2>⚠️ Configuration Error</h2>
-                    <p>Failed to initialize Supabase client.</p>
-                    <p style="margin-top:10px"><a href="auto-config.html">Click here to configure</a></p>
-                </div>
-            `;
-        }
-
         async function loadContentIdeas() {
             try {
                 console.log('Fetching call insights...');
-                const { data, error } = await supabase
-                    .from('call_insights')
-                    .select('call_id, content_angles, sentiment, priority_score, call_date')
-                    .order('created_at', { ascending: false });
+                
+                const response = await fetch(`${SUPABASE_URL}/rest/v1/call_insights?select=call_id,content_angles,sentiment,priority_score,call_date&order=created_at.desc`, {
+                    headers: {
+                        'apikey': SUPABASE_KEY,
+                        'Authorization': `Bearer ${SUPABASE_KEY}`,
+                        'Content-Type': 'application/json'
+                    }
+                });
 
-                if (error) {
-                    console.error('Supabase error:', error);
-                    throw error;
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
                 }
 
+                const data = await response.json();
                 console.log(`Fetched ${data.length} call insights`);
                 
                 // Extract and flatten content angles
@@ -103,13 +88,24 @@
                             topic: angle.topic_category || angle.topic_detail || 'other',
                             sentiment: call.sentiment || 'neutral',
                             priority: call.priority_score || 5,
-                            status: 'ideas', // Default to ideas column
+                            status: 'ideas',
                             call_date: call.call_date
                         });
                     });
                 });
 
                 console.log(`Extracted ${contentIdeas.length} content ideas`);
+                
+                if (contentIdeas.length === 0) {
+                    document.getElementById('board').innerHTML = `
+                        <div class="error">
+                            <h2>⚠️ No Content Ideas Found</h2>
+                            <p>The database has ${data.length} call insights but no content_angles extracted.</p>
+                        </div>
+                    `;
+                    return;
+                }
+                
                 renderBoard(contentIdeas);
                 updateStats(contentIdeas);
                 
@@ -118,8 +114,8 @@
                 document.getElementById('board').innerHTML = `
                     <div class="error">
                         <h2>❌ Error Loading Data</h2>
-                        <p>${error.message || 'Failed to load content ideas from Supabase'}</p>
-                        <p style="margin-top:10px"><a href="auto-config.html">Try reconfiguring</a></p>
+                        <p>${error.message}</p>
+                        <p style="margin-top:10px; font-size:12px;">Check browser console for details</p>
                     </div>
                 `;
             }
@@ -134,7 +130,7 @@
                 published: { title: '✅ PUBLISHED', items: [] }
             };
 
-            // Group by status
+            // Group by status (all default to ideas for now)
             ideas.forEach(idea => {
                 const status = idea.status || 'ideas';
                 if (columns[status]) {
@@ -146,7 +142,7 @@
                 <div class="column ${key}">
                     <h2>${col.title} (${col.items.length})</h2>
                     ${col.items.map(item => `
-                        <div class="card" onclick="viewCard('${item.id}')">
+                        <div class="card ${item.priority >= 7 ? 'high-priority' : ''}">
                             <div class="card-title">${item.title}</div>
                             <div class="card-meta">
                                 <span>${item.format}</span>
@@ -170,15 +166,8 @@
                 `${total} content ideas • ${highPriority} high priority • ${formats} formats`;
         }
 
-        function viewCard(id) {
-            // Optional: Add modal view for detailed card info
-            console.log('View card:', id);
-        }
-
         // Initialize
-        if (supabase) {
-            loadContentIdeas();
-        }
+        loadContentIdeas();
     </script>
 </body>
 </html>
