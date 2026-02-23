@@ -355,6 +355,70 @@
             });
         }
 
+        function getPlatform(format) {
+            const platforms = {
+                'blog_post': 'Website Blog',
+                'faq': 'Website FAQ Section',
+                'social_media': 'Facebook, LinkedIn, Instagram',
+                'video': 'YouTube, Facebook, Instagram Reels',
+                'pricing_guides': 'Website / PDF Download',
+                'case_study': 'Website / Email / LinkedIn',
+                'email_sequence': 'Email Marketing',
+                'infographic': 'Social Media / Pinterest',
+                'how_to_guide': 'Website / YouTube'
+            };
+            return platforms[format] || 'Website / Social Media';
+        }
+
+        function getHookType(format, audience) {
+            const hooks = {
+                'blog_post': `<strong>Problem-Solution Hook</strong><br>Start with the customer's problem, then promise the solution.<br><br>Example: "Struggling with [problem]? Here's how to [solution]..."`,
+                'faq': `<strong>Question Hook</strong><br>Lead with the exact question customers are asking.<br><br>Example: "Can I...?" or "How do I...?" or "What happens if...?"`,
+                'social_media': `<strong>Scroll-Stopper Hook</strong><br>First 3 words must grab attention. Use numbers, emojis, or controversy.<br><br>Example: "🚨 STOP! Before you..." or "97% of people don't know..."`,
+                'video': `<strong>Pattern Interrupt Hook</strong><br>First 3 seconds must break the scroll. Use surprising visuals or statements.<br><br>Example: Visual of pile of waste → "This could cost you £200 more than it should..."`,
+                'pricing_guides': `<strong>Value Comparison Hook</strong><br>Show the cost difference immediately to grab attention.<br><br>Example: "Skip vs Man & Van: Which saves you money?" or "£280 or £326? Here's the real difference..."`,
+                'case_study': `<strong>Results-First Hook</strong><br>Lead with the impressive outcome, then explain how.<br><br>Example: "How [Company] saved £5k on waste removal in 3 months..."`,
+                'email_sequence': `<strong>Curiosity Gap Hook</strong><br>Email 1: Tease the problem. Email 2: Reveal insights. Email 3: Show solution.<br><br>Example: "You're probably overpaying for skip hire (here's why)..."`,
+                'infographic': `<strong>Visual Stat Hook</strong><br>Big number or comparison at the top.<br><br>Example: "8 Yards vs 20 Yards: The Real Cost Breakdown"`,
+                'how_to_guide': `<strong>Promise Hook</strong><br>Tell them exactly what they'll learn and the time investment.<br><br>Example: "How to [achieve result] in [time frame] (5 simple steps)"`
+            };
+            return hooks[format] || `<strong>Direct Hook</strong><br>Lead with the benefit for ${audience} customers.`;
+        }
+
+        function getCTAType(format, audience, outcome) {
+            // Adjust CTA based on call outcome
+            const isLost = outcome === 'lost';
+            const isComplaint = outcome === 'complaint';
+            
+            const ctas = {
+                'blog_post': isLost 
+                    ? `<strong>Soft CTA → Comparison Tool</strong><br>"Compare skip sizes and prices for your project"<br><br><strong>Why:</strong> Customer lost due to pricing - give them tools to understand value.`
+                    : `<strong>Direct CTA → Get Quote</strong><br>"Get your free skip hire quote in 60 seconds"<br><br><strong>Why:</strong> Blog readers are researching - make booking easy.`,
+                    
+                'faq': `<strong>Educational CTA → Learn More</strong><br>"See our full guide to ${audience} skip hire"<br><br><strong>Why:</strong> FAQ readers need more info before booking.`,
+                
+                'social_media': isComplaint
+                    ? `<strong>Trust-Building CTA</strong><br>"See how we've helped 500+ ${audience} customers" + Link to reviews<br><br><strong>Why:</strong> Complaint indicates trust issues - show social proof.`
+                    : `<strong>Engagement CTA</strong><br>Ask a question: "Which option would you choose?" or "Tag someone who needs this!"<br><br><strong>Why:</strong> Social media is about conversation, not hard sells.`,
+                
+                'video': `<strong>Multi-Step CTA</strong><br>1. Like if helpful<br>2. Comment with questions<br>3. Link in bio for instant quote<br><br><strong>Why:</strong> Video viewers need multiple touch points.`,
+                
+                'pricing_guides': isLost
+                    ? `<strong>Price Match CTA</strong><br>"Found it cheaper? We'll match it + 5% off"<br><br><strong>Why:</strong> Lost to competitor on price - counter with guarantee.`
+                    : `<strong>Calculator CTA</strong><br>"Calculate your exact cost" + Interactive tool<br><br><strong>Why:</strong> Pricing content = high intent, give immediate answer.`,
+                
+                'case_study': `<strong>Similar Situation CTA</strong><br>"Got a similar project? Get your free quote"<br><br><strong>Why:</strong> Case study readers want to know if you can help them too.`,
+                
+                'email_sequence': `<strong>Progressive CTAs</strong><br>Email 1: "Reply with your biggest waste challenge"<br>Email 2: "Download our free guide"<br>Email 3: "Book your skip today - limited slots"<br><br><strong>Why:</strong> Build trust before asking for commitment.`,
+                
+                'infographic': `<strong>Share + Learn CTA</strong><br>"Share this guide" + "Get the full breakdown →"<br><br><strong>Why:</strong> Infographics are meant to be shared, then drive to website.`,
+                
+                'how_to_guide': `<strong>Implementation CTA</strong><br>"Need help with step [X]? Book a consultation"<br><br><strong>Why:</strong> Guide readers hit roadblocks - offer to do it for them.`
+            };
+            
+            return ctas[format] || `<strong>General CTA</strong><br>"Get your free quote today" or "Contact us for help"`;
+        }
+
         function getSuggestedApproach(format, audience, insight) {
             const approaches = {
                 'blog_post': `Write a 600-800 word blog post targeting ${audience} customers. Include practical tips, real examples, and a clear CTA. Use subheadings for scannability.`,
@@ -417,20 +481,24 @@
                 ? contextParts.join(' • ') + '\n\nFull transcript not stored in database.'
                 : 'Limited call data available';
 
+            // Generate hook and CTA based on format and audience
+            const hookType = getHookType(idea.format, idea.audience);
+            const ctaType = getCTAType(idea.format, idea.audience, call.outcome);
+            
             document.getElementById('modalTitle').textContent = idea.title;
             document.getElementById('modalBody').innerHTML = `
                 <div class="info-grid">
                     <div class="info-item">
                         <label>Format</label>
-                        <span>${idea.format}</span>
+                        <span>${idea.format.replace(/_/g, ' ')}</span>
                     </div>
                     <div class="info-item">
                         <label>Audience</label>
                         <span>${idea.audience}</span>
                     </div>
                     <div class="info-item">
-                        <label>Topic</label>
-                        <span>${idea.topic}</span>
+                        <label>Platform</label>
+                        <span>${getPlatform(idea.format)}</span>
                     </div>
                     <div class="info-item">
                         <label>Priority</label>
@@ -443,6 +511,20 @@
                     <div class="info-item">
                         <label>Call Outcome</label>
                         <span>${call.outcome || 'unknown'}</span>
+                    </div>
+                </div>
+                
+                <div class="section" style="margin-top:20px;">
+                    <h3>🎣 HOOK TYPE</h3>
+                    <div class="context-box">
+                        ${hookType}
+                    </div>
+                </div>
+                
+                <div class="section">
+                    <h3>🎯 CTA TYPE</h3>
+                    <div class="context-box">
+                        ${ctaType}
                     </div>
                 </div>
 
