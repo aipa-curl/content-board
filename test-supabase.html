@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Supabase Content Test</title>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <style>
+        body { font-family: monospace; padding: 20px; background: #1e1e1e; color: #d4d4d4; }
+        pre { background: #2d2d2d; padding: 15px; border-radius: 5px; overflow-x: auto; }
+        .success { color: #4caf50; }
+        .error { color: #f44336; }
+        .info { color: #2196f3; }
+    </style>
+</head>
+<body>
+    <h1>🔍 Supabase Content Board Test</h1>
+    <div id="output"><p class="info">Testing connection...</p></div>
+
+    <script>
+        const output = document.getElementById('output');
+        
+        async function test() {
+            try {
+                output.innerHTML += '<p class="info">Creating Supabase client...</p>';
+                const supabase = window.supabase.createClient(
+                    'https://zppiksmyqnigiziqsigq.supabase.co',
+                    'sb_publishable_4xGNFr6q9Fv-_4tg4SVYRw_0D4nnSGz'
+                );
+                
+                output.innerHTML += '<p class="success">✅ Supabase client created</p>';
+                output.innerHTML += '<p class="info">Fetching call insights...</p>';
+                
+                const { data, error } = await supabase
+                    .from('call_insights')
+                    .select('call_id, content_angles, priority_score')
+                    .order('created_at', { ascending: false });
+
+                if (error) throw error;
+                
+                output.innerHTML += `<p class="success">✅ Fetched ${data.length} records</p>`;
+                
+                // Extract content angles
+                let totalAngles = 0;
+                const angles = [];
+                data.forEach(call => {
+                    try {
+                        const parsed = typeof call.content_angles === 'string' 
+                            ? JSON.parse(call.content_angles) 
+                            : call.content_angles || [];
+                        totalAngles += parsed.length;
+                        parsed.forEach(a => angles.push(a));
+                    } catch (e) {
+                        console.warn('Parse error:', e);
+                    }
+                });
+                
+                output.innerHTML += `<p class="success">✅ Extracted ${totalAngles} content angles</p>`;
+                output.innerHTML += '<h2>Sample Content Ideas:</h2>';
+                
+                angles.slice(0, 10).forEach((angle, i) => {
+                    output.innerHTML += `
+                        <pre>${i+1}. ${angle.hook || angle.topic_detail || 'Untitled'}
+   Format: ${angle.format}
+   Audience: ${angle.target_audience}</pre>
+                    `;
+                });
+                
+                output.innerHTML += '<p class="success">✅ Test complete! Content board should work.</p>';
+                
+            } catch (error) {
+                output.innerHTML += `<p class="error">❌ Error: ${error.message}</p>`;
+                output.innerHTML += `<pre>${error.stack}</pre>`;
+            }
+        }
+        
+        test();
+    </script>
+</body>
+</html>
