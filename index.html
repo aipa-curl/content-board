@@ -11,21 +11,34 @@
         h1 { color: #333; margin-bottom: 10px; }
         .stats { font-size: 14px; color: #666; }
         .board { display: flex; gap: 15px; overflow-x: auto; padding-bottom: 20px; }
-        .column { min-width: 280px; max-width: 280px; background: #fff; border-radius: 12px; padding: 15px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); }
+        .column { min-width: 280px; max-width: 280px; background: #fff; border-radius: 12px; padding: 15px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); min-height: 400px; }
+        .column.drag-over { background: #e3f2fd; }
         .column h2 { font-size: 14px; text-transform: uppercase; color: #666; margin-bottom: 15px; padding-bottom: 10px; border-bottom: 2px solid #eee; }
         .column.ideas h2 { border-color: #9e9e9e; }
         .column.writing h2 { border-color: #2196f3; }
         .column.review h2 { border-color: #ff9800; }
         .column.scheduled h2 { border-color: #9c27b0; }
         .column.published h2 { border-color: #4caf50; }
-        .card { background: #fafafa; border-radius: 8px; padding: 12px; margin-bottom: 10px; cursor: pointer; border-left: 3px solid #ddd; transition: all 0.2s; }
+        .card { background: #fafafa; border-radius: 8px; padding: 12px; margin-bottom: 10px; cursor: move; border-left: 3px solid #ddd; transition: all 0.2s; }
         .card:hover { transform: translateY(-2px); box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
+        .card.dragging { opacity: 0.5; }
         .card.high-priority { border-left-color: #f44336; }
         .card-title { font-weight: 600; font-size: 14px; margin-bottom: 8px; color: #333; }
         .card-meta { display: flex; gap: 10px; font-size: 11px; color: #888; flex-wrap: wrap; }
         .card-meta span { background: #eee; padding: 2px 8px; border-radius: 10px; }
         .loading { text-align: center; padding: 40px; color: #888; }
         .error { text-align: center; padding: 40px; color: #f44336; background: #ffebee; border-radius: 8px; margin: 20px; }
+        .modal { display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); z-index: 1000; padding: 20px; overflow-y: auto; }
+        .modal.active { display: flex; align-items: center; justify-content: center; }
+        .modal-content { background: #fff; border-radius: 16px; max-width: 600px; width: 100%; max-height: 90vh; overflow-y: auto; }
+        .modal-header { background: #333; color: #fff; padding: 20px; display: flex; justify-content: space-between; align-items: center; border-radius: 16px 16px 0 0; }
+        .modal-header h2 { font-size: 18px; }
+        .close-btn { background: none; border: none; color: #fff; font-size: 28px; cursor: pointer; line-height: 1; }
+        .modal-body { padding: 20px; }
+        .info-grid { display: grid; gap: 15px; }
+        .info-item { background: #f5f5f5; padding: 12px; border-radius: 8px; }
+        .info-item label { display: block; font-size: 11px; color: #888; margin-bottom: 5px; text-transform: uppercase; font-weight: 600; }
+        .info-item span { font-size: 14px; color: #333; }
         @media (max-width: 600px) {
             .board { gap: 10px; }
             .column { min-width: 250px; max-width: 250px; }
@@ -41,14 +54,25 @@
         <div class="loading">Loading content ideas from call insights...</div>
     </div>
 
+    <div class="modal" id="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 id="modalTitle">Card Details</h2>
+                <button class="close-btn" onclick="closeModal()">&times;</button>
+            </div>
+            <div class="modal-body" id="modalBody"></div>
+        </div>
+    </div>
+
     <script>
         const SUPABASE_URL = 'https://zppiksmyqnigiziqsigq.supabase.co';
         const SUPABASE_KEY = 'sb_publishable_4xGNFr6q9Fv-_4tg4SVYRw_0D4nnSGz';
         
+        let allIdeas = [];
+        let draggedCard = null;
+
         async function loadContentIdeas() {
             try {
-                console.log('Fetching call insights...');
-                
                 const response = await fetch(`${SUPABASE_URL}/rest/v1/call_insights?select=call_id,content_angles,sentiment,priority_score,call_date&order=created_at.desc`, {
                     headers: {
                         'apikey': SUPABASE_KEY,
@@ -57,25 +81,18 @@
                     }
                 });
 
-                if (!response.ok) {
-                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
-                }
-
+                if (!response.ok) throw new Error(`HTTP ${response.status}`);
                 const data = await response.json();
-                console.log(`Fetched ${data.length} call insights`);
                 
-                // Extract and flatten content angles
+                // Extract content angles
                 const contentIdeas = [];
                 data.forEach(call => {
                     let angles = [];
                     try {
-                        if (typeof call.content_angles === 'string') {
-                            angles = JSON.parse(call.content_angles);
-                        } else {
-                            angles = call.content_angles || [];
-                        }
+                        angles = typeof call.content_angles === 'string' 
+                            ? JSON.parse(call.content_angles) 
+                            : call.content_angles || [];
                     } catch (e) {
-                        console.warn('Failed to parse content_angles for call', call.call_id, e);
                         angles = [];
                     }
 
@@ -85,43 +102,41 @@
                             title: angle.hook || angle.topic_detail || 'Untitled',
                             format: angle.format || 'blog_post',
                             audience: angle.target_audience || 'general',
-                            topic: angle.topic_category || angle.topic_detail || 'other',
+                            topic: angle.topic_category || 'other',
                             sentiment: call.sentiment || 'neutral',
                             priority: call.priority_score || 5,
-                            status: 'ideas',
-                            call_date: call.call_date
+                            status: localStorage.getItem(`card-status-${call.call_id}-${idx}`) || 'ideas',
+                            call_date: call.call_date,
+                            details: angle
                         });
                     });
                 });
 
-                console.log(`Extracted ${contentIdeas.length} content ideas`);
-                
                 if (contentIdeas.length === 0) {
                     document.getElementById('board').innerHTML = `
                         <div class="error">
                             <h2>⚠️ No Content Ideas Found</h2>
-                            <p>The database has ${data.length} call insights but no content_angles extracted.</p>
+                            <p>No content_angles in database yet.</p>
                         </div>
                     `;
                     return;
                 }
                 
-                renderBoard(contentIdeas);
-                updateStats(contentIdeas);
+                allIdeas = contentIdeas;
+                renderBoard();
+                updateStats();
                 
             } catch (error) {
-                console.error('Error loading content:', error);
                 document.getElementById('board').innerHTML = `
                     <div class="error">
                         <h2>❌ Error Loading Data</h2>
                         <p>${error.message}</p>
-                        <p style="margin-top:10px; font-size:12px;">Check browser console for details</p>
                     </div>
                 `;
             }
         }
 
-        function renderBoard(ideas) {
+        function renderBoard() {
             const columns = {
                 ideas: { title: '💡 IDEAS', items: [] },
                 writing: { title: '✍️ WRITING', items: [] },
@@ -130,19 +145,19 @@
                 published: { title: '✅ PUBLISHED', items: [] }
             };
 
-            // Group by status (all default to ideas for now)
-            ideas.forEach(idea => {
+            allIdeas.forEach(idea => {
                 const status = idea.status || 'ideas';
-                if (columns[status]) {
-                    columns[status].items.push(idea);
-                }
+                if (columns[status]) columns[status].items.push(idea);
             });
 
             const boardHTML = Object.entries(columns).map(([key, col]) => `
-                <div class="column ${key}">
+                <div class="column ${key}" data-column="${key}">
                     <h2>${col.title} (${col.items.length})</h2>
                     ${col.items.map(item => `
-                        <div class="card ${item.priority >= 7 ? 'high-priority' : ''}">
+                        <div class="card ${item.priority >= 7 ? 'high-priority' : ''}" 
+                             data-id="${item.id}" 
+                             draggable="true"
+                             onclick="openCard('${item.id}')">
                             <div class="card-title">${item.title}</div>
                             <div class="card-meta">
                                 <span>${item.format}</span>
@@ -155,16 +170,114 @@
             `).join('');
 
             document.getElementById('board').innerHTML = boardHTML;
+            initDragAndDrop();
         }
 
-        function updateStats(ideas) {
-            const total = ideas.length;
-            const highPriority = ideas.filter(i => i.priority >= 7).length;
-            const formats = [...new Set(ideas.map(i => i.format))].length;
-            
+        function initDragAndDrop() {
+            const cards = document.querySelectorAll('.card');
+            const columns = document.querySelectorAll('.column');
+
+            cards.forEach(card => {
+                card.addEventListener('dragstart', e => {
+                    draggedCard = card;
+                    card.classList.add('dragging');
+                    e.dataTransfer.effectAllowed = 'move';
+                });
+
+                card.addEventListener('dragend', () => {
+                    card.classList.remove('dragging');
+                    draggedCard = null;
+                });
+            });
+
+            columns.forEach(column => {
+                column.addEventListener('dragover', e => {
+                    e.preventDefault();
+                    column.classList.add('drag-over');
+                });
+
+                column.addEventListener('dragleave', () => {
+                    column.classList.remove('drag-over');
+                });
+
+                column.addEventListener('drop', e => {
+                    e.preventDefault();
+                    column.classList.remove('drag-over');
+                    
+                    if (draggedCard) {
+                        const cardId = draggedCard.dataset.id;
+                        const newStatus = column.dataset.column;
+                        
+                        // Update status
+                        const idea = allIdeas.find(i => i.id === cardId);
+                        if (idea) {
+                            idea.status = newStatus;
+                            localStorage.setItem(`card-status-${cardId}`, newStatus);
+                            renderBoard();
+                        }
+                    }
+                });
+            });
+        }
+
+        function openCard(id) {
+            const idea = allIdeas.find(i => i.id === id);
+            if (!idea) return;
+
+            document.getElementById('modalTitle').textContent = idea.title;
+            document.getElementById('modalBody').innerHTML = `
+                <div class="info-grid">
+                    <div class="info-item">
+                        <label>Format</label>
+                        <span>${idea.format}</span>
+                    </div>
+                    <div class="info-item">
+                        <label>Audience</label>
+                        <span>${idea.audience}</span>
+                    </div>
+                    <div class="info-item">
+                        <label>Topic</label>
+                        <span>${idea.topic}</span>
+                    </div>
+                    <div class="info-item">
+                        <label>Priority</label>
+                        <span>${idea.priority}/10</span>
+                    </div>
+                    <div class="info-item">
+                        <label>Sentiment</label>
+                        <span>${idea.sentiment}</span>
+                    </div>
+                    <div class="info-item">
+                        <label>Status</label>
+                        <span>${idea.status}</span>
+                    </div>
+                </div>
+                ${idea.details?.topic_detail ? `
+                    <div class="info-item" style="margin-top:15px">
+                        <label>Details</label>
+                        <span>${idea.details.topic_detail}</span>
+                    </div>
+                ` : ''}
+            `;
+            document.getElementById('modal').classList.add('active');
+        }
+
+        function closeModal() {
+            document.getElementById('modal').classList.remove('active');
+        }
+
+        function updateStats() {
+            const total = allIdeas.length;
+            const highPriority = allIdeas.filter(i => i.priority >= 7).length;
+            const formats = [...new Set(allIdeas.map(i => i.format))].length;
             document.getElementById('stats').textContent = 
                 `${total} content ideas • ${highPriority} high priority • ${formats} formats`;
         }
+
+        // Close modal on background click
+        document.getElementById('modal').addEventListener('click', e => {
+            if (e.target.id === 'modal') closeModal();
+        });
 
         // Initialize
         loadContentIdeas();
