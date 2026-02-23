@@ -4,266 +4,181 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Content Board - We Want Waste</title>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <style>
         * { box-sizing: border-box; margin: 0; padding: 0; }
         body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #f5f5f5; padding: 20px; }
-        h1 { text-align: center; margin-bottom: 20px; color: #333; }
+        .header { text-align: center; margin-bottom: 20px; }
+        h1 { color: #333; margin-bottom: 10px; }
+        .stats { font-size: 14px; color: #666; }
         .board { display: flex; gap: 15px; overflow-x: auto; padding-bottom: 20px; }
         .column { min-width: 280px; max-width: 280px; background: #fff; border-radius: 12px; padding: 15px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); }
         .column h2 { font-size: 14px; text-transform: uppercase; color: #666; margin-bottom: 15px; padding-bottom: 10px; border-bottom: 2px solid #eee; }
         .column.ideas h2 { border-color: #9e9e9e; }
         .column.writing h2 { border-color: #2196f3; }
         .column.review h2 { border-color: #ff9800; }
-        .column.scheduled h2 { border-color: #4caf50; }
+        .column.scheduled h2 { border-color: #9c27b0; }
         .column.published h2 { border-color: #4caf50; }
-        .column.drag-over { background: #e3f2fd; }
-        .card { background: #fafafa; border-radius: 8px; padding: 12px; margin-bottom: 10px; cursor: move; border-left: 3px solid #ddd; transition: all 0.2s; }
+        .card { background: #fafafa; border-radius: 8px; padding: 12px; margin-bottom: 10px; cursor: pointer; border-left: 3px solid #ddd; transition: all 0.2s; }
         .card:hover { transform: translateY(-2px); box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
-        .card.dragging { opacity: 0.5; }
-        .card.priority-high { border-left-color: #f44336; }
-        .card.priority-medium { border-left-color: #ff9800; }
-        .card.priority-low { border-left-color: #4caf50; }
         .card-title { font-weight: 600; font-size: 14px; margin-bottom: 8px; color: #333; }
         .card-meta { display: flex; gap: 10px; font-size: 11px; color: #888; flex-wrap: wrap; }
         .card-meta span { background: #eee; padding: 2px 8px; border-radius: 10px; }
-        .modal { display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); z-index: 1000; overflow-y: auto; padding: 20px; }
-        .modal.active { display: block; }
-        .modal-content { background: #fff; border-radius: 16px; max-width: 800px; margin: 20px auto; overflow: hidden; }
-        .modal-header { background: #333; color: #fff; padding: 20px; display: flex; justify-content: space-between; align-items: center; }
-        .modal-header h2 { font-size: 18px; }
-        .close-btn { background: none; border: none; color: #fff; font-size: 24px; cursor: pointer; }
-        .modal-body { padding: 20px; }
-        .tabs { display: flex; gap: 10px; margin-bottom: 20px; flex-wrap: wrap; }
-        .tab { padding: 8px 16px; border: none; background: #eee; border-radius: 20px; cursor: pointer; font-size: 13px; }
-        .tab.active { background: #333; color: #fff; }
-        .version-content { display: none; }
-        .version-content.active { display: block; }
-        .copy-box { background: #f5f5f5; padding: 15px; border-radius: 8px; white-space: pre-wrap; font-size: 13px; line-height: 1.6; margin-bottom: 15px; }
-        .copy-actions { display: flex; gap: 10px; margin-bottom: 20px; }
-        .btn { padding: 10px 20px; border: none; border-radius: 8px; cursor: pointer; font-size: 14px; }
-        .btn-primary { background: #333; color: #fff; }
-        .btn-secondary { background: #eee; color: #333; }
-        .info-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 20px; }
-        .info-item { background: #f5f5f5; padding: 12px; border-radius: 8px; }
-        .info-item label { display: block; font-size: 11px; color: #888; margin-bottom: 5px; text-transform: uppercase; }
-        .info-item span { font-size: 14px; color: #333; }
         .loading { text-align: center; padding: 40px; color: #888; }
+        .error { text-align: center; padding: 40px; color: #f44336; background: #ffebee; border-radius: 8px; margin: 20px; }
+        .config-prompt { text-align: center; padding: 40px; background: #fff3cd; border-radius: 8px; margin: 20px; }
+        .config-prompt a { color: #856404; font-weight: bold; }
         @media (max-width: 600px) {
             .board { gap: 10px; }
             .column { min-width: 250px; max-width: 250px; }
-            .info-grid { grid-template-columns: 1fr; }
         }
     </style>
 </head>
 <body>
-    <h1>📋 Content Board</h1>
-    <div class="board" id="board">
-        <div class="loading">Loading...</div>
+    <div class="header">
+        <h1>📋 Content Board</h1>
+        <div class="stats" id="stats">Loading...</div>
     </div>
-    
-    <div class="modal" id="modal">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h2 id="modalTitle">Task Details</h2>
-                <button class="close-btn" onclick="closeModal()">&times;</button>
-            </div>
-            <div class="modal-body" id="modalBody"></div>
-        </div>
+    <div class="board" id="board">
+        <div class="loading">Loading content ideas from call insights...</div>
     </div>
 
     <script>
-        const API_URL = './tasks.json';
-        let tasks = [];
-        let currentTask = null;
-        let draggedElement = null;
-
-        async function loadTasks() {
-            try {
-                const res = await fetch(API_URL);
-                const loadedTasks = await res.json();
-                
-                // Check for saved changes in localStorage
-                const savedTasks = localStorage.getItem('tasks');
-                if (savedTasks) {
-                    tasks = JSON.parse(savedTasks);
-                } else {
-                    tasks = loadedTasks;
-                }
-                
-                renderBoard();
-            } catch (e) {
-                document.getElementById('board').innerHTML = '<div class="loading">Error loading tasks.</div>';
-            }
-        }
-
-        function renderBoard() {
-            const columns = {
-                ideas: '💡 Ideas',
-                writing: '📝 Writing',
-                review: '👀 Review',
-                scheduled: '📅 Scheduled',
-                published: '✅ Published'
-            };
-            
-            let html = '';
-            for (const [col, label] of Object.entries(columns)) {
-                const colTasks = tasks.filter(t => t.column === col);
-                html += `
-                    <div class="column ${col}" data-column="${col}" ondrop="drop(event)" ondragover="allowDrop(event)" ondragleave="dragLeave(event)">
-                        <h2>${label} (${colTasks.length})</h2>
-                        ${colTasks.map(t => renderCard(t)).join('')}
-                    </div>
-                `;
-            }
-            document.getElementById('board').innerHTML = html;
-        }
-
-        function renderCard(task) {
-            const priorityClass = `priority-${task.priority || 'medium'}`;
-            return `
-                <div class="card ${priorityClass}" 
-                     draggable="true" 
-                     ondragstart="dragStart(event)" 
-                     ondragend="dragEnd(event)"
-                     onclick="openTask('${task.id}')"
-                     data-id="${task.id}">
-                    <div class="card-title">${task.title}</div>
-                    <div class="card-meta">
-                        <span>${task.platform || 'General'}</span>
-                        <span>${task.priority || 'medium'}</span>
-                    </div>
+        const SUPABASE_URL = localStorage.getItem('SUPABASE_URL') || 'https://zppiksmyqnigiziqsigq.supabase.co';
+        const SUPABASE_KEY = localStorage.getItem('SUPABASE_KEY') || 'sb_publishable_4xGNFr6q9Fv-_4tg4SVYRw_0D4nnSGz';
+        
+        console.log('Initializing Supabase...');
+        console.log('URL:', SUPABASE_URL);
+        
+        let supabase;
+        try {
+            supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+        } catch (e) {
+            console.error('Failed to create Supabase client:', e);
+            document.getElementById('board').innerHTML = `
+                <div class="error">
+                    <h2>⚠️ Configuration Error</h2>
+                    <p>Failed to initialize Supabase client.</p>
+                    <p style="margin-top:10px"><a href="auto-config.html">Click here to configure</a></p>
                 </div>
             `;
         }
 
-        function dragStart(e) {
-            draggedElement = e.target;
-            e.target.classList.add('dragging');
-            e.dataTransfer.effectAllowed = 'move';
-            e.dataTransfer.setData('text/html', e.target.innerHTML);
-        }
+        async function loadContentIdeas() {
+            try {
+                console.log('Fetching call insights...');
+                const { data, error } = await supabase
+                    .from('call_insights')
+                    .select('call_id, content_angles, sentiment, priority_score, call_date')
+                    .order('created_at', { ascending: false });
 
-        function dragEnd(e) {
-            e.target.classList.remove('dragging');
-            document.querySelectorAll('.column').forEach(col => col.classList.remove('drag-over'));
-        }
+                if (error) {
+                    console.error('Supabase error:', error);
+                    throw error;
+                }
 
-        function allowDrop(e) {
-            e.preventDefault();
-            e.target.closest('.column').classList.add('drag-over');
-        }
-
-        function dragLeave(e) {
-            e.target.closest('.column').classList.remove('drag-over');
-        }
-
-        function drop(e) {
-            e.preventDefault();
-            const column = e.target.closest('.column');
-            column.classList.remove('drag-over');
-            
-            if (!draggedElement) return;
-            
-            const taskId = draggedElement.dataset.id;
-            const newColumn = column.dataset.column;
-            
-            // Update task column
-            const task = tasks.find(t => t.id === taskId);
-            if (task) {
-                task.column = newColumn;
+                console.log(`Fetched ${data.length} call insights`);
                 
-                // Save to localStorage
-                localStorage.setItem('tasks', JSON.stringify(tasks));
-                
-                // Re-render board
-                renderBoard();
-            }
-        }
+                // Extract and flatten content angles
+                const contentIdeas = [];
+                data.forEach(call => {
+                    let angles = [];
+                    try {
+                        if (typeof call.content_angles === 'string') {
+                            angles = JSON.parse(call.content_angles);
+                        } else {
+                            angles = call.content_angles || [];
+                        }
+                    } catch (e) {
+                        console.warn('Failed to parse content_angles for call', call.call_id, e);
+                        angles = [];
+                    }
 
-        function openTask(id) {
-            currentTask = tasks.find(t => t.id === id);
-            if (!currentTask) return;
-            
-            document.getElementById('modalTitle').textContent = currentTask.title;
-            
-            const versions = currentTask.versions || {};
-            const platforms = ['linkedin', 'instagram', 'facebook', 'tiktok', 'twitter'];
-            const platformNames = { linkedin: 'LinkedIn', instagram: 'Instagram', facebook: 'Facebook', tiktok: 'TikTok', twitter: 'X/Twitter' };
-            
-            let tabsHtml = '';
-            let contentHtml = '';
-            
-            platforms.forEach((p, i) => {
-                const v = versions[p];
-                const active = i === 0 ? 'active' : '';
-                const contentActive = i === 0 ? 'active' : '';
-                tabsHtml += `<button class="tab ${active}" onclick="showTab('${p}')">${platformNames[p]}</button>`;
-                contentHtml += `
-                    <div class="version-content ${contentActive}" id="tab-${p}">
-                        ${v ? `
-                            <div class="info-grid">
-                                <div class="info-item">
-                                    <label>Cohort</label>
-                                    <span>${v.cohort || '-'}</span>
-                                </div>
-                                <div class="info-item">
-                                    <label>Platform</label>
-                                    <span>${platformNames[p]}</span>
-                                </div>
-                                <div class="info-item">
-                                    <label>Hook Type</label>
-                                    <span>${v.hook_type || '-'}</span>
-                                </div>
-                                <div class="info-item">
-                                    <label>CTA Type</label>
-                                    <span>${v.cta_type || '-'}</span>
-                                </div>
-                            </div>
-                            <div class="copy-box">${v.copy || 'No copy available'}</div>
-                            <div class="copy-actions">
-                                <button class="btn btn-primary" onclick="copyCopy('${p}')">Copy Text</button>
-                                ${v.visual_url ? `<a href="${v.visual_url}" target="_blank" class="btn btn-secondary">View Visual</a>` : ''}
-                            </div>
-                        ` : '<p style="color: #999;">No content for this platform yet</p>'}
+                    angles.forEach((angle, idx) => {
+                        contentIdeas.push({
+                            id: `${call.call_id}-${idx}`,
+                            title: angle.hook || angle.topic_detail || 'Untitled',
+                            format: angle.format || 'blog_post',
+                            audience: angle.target_audience || 'general',
+                            topic: angle.topic_category || angle.topic_detail || 'other',
+                            sentiment: call.sentiment || 'neutral',
+                            priority: call.priority_score || 5,
+                            status: 'ideas', // Default to ideas column
+                            call_date: call.call_date
+                        });
+                    });
+                });
+
+                console.log(`Extracted ${contentIdeas.length} content ideas`);
+                renderBoard(contentIdeas);
+                updateStats(contentIdeas);
+                
+            } catch (error) {
+                console.error('Error loading content:', error);
+                document.getElementById('board').innerHTML = `
+                    <div class="error">
+                        <h2>❌ Error Loading Data</h2>
+                        <p>${error.message || 'Failed to load content ideas from Supabase'}</p>
+                        <p style="margin-top:10px"><a href="auto-config.html">Try reconfiguring</a></p>
                     </div>
                 `;
-            });
-            
-            document.getElementById('modalBody').innerHTML = `
-                <div class="tabs">${tabsHtml}</div>
-                ${contentHtml}
-            `;
-            
-            document.getElementById('modal').classList.add('active');
-        }
-
-        function showTab(platform) {
-            document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
-            document.querySelectorAll('.version-content').forEach(c => c.classList.remove('active'));
-            
-            event.target.classList.add('active');
-            document.getElementById('tab-' + platform).classList.add('active');
-        }
-
-        function copyCopy(platform) {
-            const copyText = currentTask.versions[platform]?.copy;
-            if (copyText) {
-                navigator.clipboard.writeText(copyText);
-                alert('Copied to clipboard!');
             }
         }
 
-        function closeModal() {
-            document.getElementById('modal').classList.remove('active');
+        function renderBoard(ideas) {
+            const columns = {
+                ideas: { title: '💡 IDEAS', items: [] },
+                writing: { title: '✍️ WRITING', items: [] },
+                review: { title: '👀 REVIEW', items: [] },
+                scheduled: { title: '📅 SCHEDULED', items: [] },
+                published: { title: '✅ PUBLISHED', items: [] }
+            };
+
+            // Group by status
+            ideas.forEach(idea => {
+                const status = idea.status || 'ideas';
+                if (columns[status]) {
+                    columns[status].items.push(idea);
+                }
+            });
+
+            const boardHTML = Object.entries(columns).map(([key, col]) => `
+                <div class="column ${key}">
+                    <h2>${col.title} (${col.items.length})</h2>
+                    ${col.items.map(item => `
+                        <div class="card" onclick="viewCard('${item.id}')">
+                            <div class="card-title">${item.title}</div>
+                            <div class="card-meta">
+                                <span>${item.format}</span>
+                                <span>${item.audience}</span>
+                                ${item.priority >= 7 ? '<span style="background:#ffebee;color:#c62828">high</span>' : ''}
+                            </div>
+                        </div>
+                    `).join('')}
+                </div>
+            `).join('');
+
+            document.getElementById('board').innerHTML = boardHTML;
         }
 
-        // Close modal on outside click
-        document.getElementById('modal').addEventListener('click', function(e) {
-            if (e.target === this) closeModal();
-        });
+        function updateStats(ideas) {
+            const total = ideas.length;
+            const highPriority = ideas.filter(i => i.priority >= 7).length;
+            const formats = [...new Set(ideas.map(i => i.format))].length;
+            
+            document.getElementById('stats').textContent = 
+                `${total} content ideas • ${highPriority} high priority • ${formats} formats`;
+        }
 
-        // Load tasks on page load
-        loadTasks();
+        function viewCard(id) {
+            // Optional: Add modal view for detailed card info
+            console.log('View card:', id);
+        }
+
+        // Initialize
+        if (supabase) {
+            loadContentIdeas();
+        }
     </script>
 </body>
 </html>
