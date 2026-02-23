@@ -235,6 +235,28 @@
             });
         }
 
+        function getSuggestedApproach(format, audience, insight) {
+            const approaches = {
+                'blog_post': `Write a 600-800 word blog post targeting ${audience} customers. Include practical tips, real examples, and a clear CTA. Use subheadings for scannability.`,
+                'faq': `Create a FAQ section with 5-7 common questions. Keep answers concise (2-3 sentences). Use bullet points for clarity. Include links to relevant services.`,
+                'social_media': `Create 3-5 social media posts (LinkedIn/Facebook). Mix educational content with engaging questions. Include relevant images/graphics. Use hashtags strategically.`,
+                'video': `Script a 2-3 minute video. Start with the problem, explain the solution, show examples. Include on-screen text for key points. End with clear next steps.`,
+                'pricing_guides': `Create a comparison table with 3-4 options. Show cost breakdowns, what's included, and best-use scenarios. Add a cost calculator if possible.`,
+                'case_study': `Tell a customer story: challenge → solution → results. Include real numbers/metrics. Add customer quotes. Keep it under 500 words with images.`,
+                'email_sequence': `Write 3-email sequence: 1) Problem awareness, 2) Solution education, 3) Clear CTA. Space emails 2-3 days apart. Personalize based on customer type.`,
+                'infographic': `Visual comparison layout. Use icons and minimal text (under 50 words total). Highlight 3-5 key data points. Make it shareable on social media.`,
+                'how_to_guide': `Step-by-step guide with 5-7 clear steps. Include photos/diagrams for each step. Add "common mistakes" section. Provide downloadable checklist.`
+            };
+            
+            let approach = approaches[format] || `Create ${format} content for ${audience} customers. Focus on solving their specific problem with clear, actionable advice.`;
+            
+            if (insight && insight.impact === 'high') {
+                approach += ` <strong>Priority:</strong> This addresses a high-impact issue (${insight.category?.replace(/_/g, ' ')}).`;
+            }
+            
+            return approach;
+        }
+
         function openCard(id) {
             const idea = allIdeas.find(i => i.id === id);
             if (!idea) return;
@@ -323,14 +345,27 @@
                     </div>
                 ` : ''}
 
-                ${idea.details?.topic_detail ? `
-                    <div class="section">
-                        <h3>📝 Content Angle</h3>
-                        <div class="context-box">
-                            ${idea.details.topic_detail}
-                        </div>
+                <div class="section">
+                    <h3>📝 Content Brief</h3>
+                    <div class="context-box">
+                        <strong style="display:block; margin-bottom:10px; color:#1976d2;">What to Create:</strong>
+                        ${idea.details?.topic_detail || 'General content about ' + idea.topic}
+                        
+                        <strong style="display:block; margin-top:15px; margin-bottom:10px; color:#1976d2;">Why It Matters:</strong>
+                        ${relevantPain 
+                            ? `Customers are experiencing: ${relevantPain.description} (${relevantPain.severity} severity)`
+                            : `Addresses ${idea.topic.replace(/_/g, ' ')} questions from ${idea.audience} customers`
+                        }
+                        
+                        <strong style="display:block; margin-top:15px; margin-bottom:10px; color:#1976d2;">Suggested Approach:</strong>
+                        ${getSuggestedApproach(idea.format, idea.audience, relevantInsight)}
+                        
+                        ${idea.details?.hook ? `
+                            <strong style="display:block; margin-top:15px; margin-bottom:10px; color:#1976d2;">Hook/Headline:</strong>
+                            ${idea.details.hook}
+                        ` : ''}
                     </div>
-                ` : ''}
+                </div>
 
                 ${relevantInsight ? `
                     <div class="section">
