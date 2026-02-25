@@ -109,11 +109,10 @@
                 allIdeas = [];
                 calls.forEach(call => {
                     try {
+                        // Parse all data from call
                         const angles = typeof call.content_angles === 'string' 
                             ? JSON.parse(call.content_angles)
                             : call.content_angles || [];
-                        
-                        // Parse pain points and insights
                         const painPoints = typeof call.pain_points === 'string' 
                             ? JSON.parse(call.pain_points) 
                             : call.pain_points || [];
@@ -121,42 +120,50 @@
                             ? JSON.parse(call.product_insights)
                             : call.product_insights || [];
                         
-                        angles.forEach((angle, idx) => {
-                            const ideaId = `${call.call_id}-${idx}`;
-                            const hasGeneratedContent = generatedContent[ideaId];
-                            const content = hasGeneratedContent || localStorage.getItem(`card-content-${ideaId}`);
-                            
-                            // Determine status: if content exists, force to review
-                            let savedStatus;
-                            if (hasGeneratedContent) {
-                                savedStatus = 'review';
-                                localStorage.setItem(`card-status-${ideaId}`, 'review');
-                            } else {
-                                savedStatus = localStorage.getItem(`card-status-${ideaId}`) || 'ideas';
-                            }
-                            
-                            // Get relevant pain point and insight
-                            const painPoint = painPoints[0] || null;
-                            const insight = productInsights[0] || null;
-                            
-                            allIdeas.push({
-                                id: ideaId,
-                                call_id: call.call_id,
-                                index: idx,
-                                title: angle.hook || angle.topic_detail || 'Untitled',
-                                format: angle.format || 'blog_post',
-                                audience: angle.target_audience || 'unknown',
-                                topic: angle.topic_category || 'other',
-                                priority: call.priority_score || 5,
-                                status: savedStatus,
-                                generated_content: content,
-                                details: angle,
-                                painPoint: painPoint,
-                                insight: insight,
-                                sentiment: call.sentiment,
-                                outcome: call.outcome
+                        // Create one card per pain point
+                        if (painPoints.length > 0) {
+                            painPoints.forEach((painPoint, idx) => {
+                                const ideaId = `${call.call_id}-pain-${idx}`;
+                                const hasGeneratedContent = generatedContent[ideaId];
+                                const content = hasGeneratedContent || localStorage.getItem(`card-content-${ideaId}`);
+                                
+                                // Determine status: if content exists, force to review
+                                let savedStatus;
+                                if (hasGeneratedContent) {
+                                    savedStatus = 'review';
+                                    localStorage.setItem(`card-status-${ideaId}`, 'review');
+                                } else {
+                                    savedStatus = localStorage.getItem(`card-status-${ideaId}`) || 'ideas';
+                                }
+                                
+                                // Find matching content angle and insight for this pain point
+                                const relatedAngle = angles[idx] || angles[0] || {};
+                                const relatedInsight = productInsights[idx] || productInsights[0] || null;
+                                
+                                // Generate card number (sequential)
+                                const cardNumber = allIdeas.length + 1;
+                                
+                                allIdeas.push({
+                                    id: ideaId,
+                                    cardNumber: cardNumber,
+                                    call_id: call.call_id,
+                                    index: idx,
+                                    title: painPoint.description || 'Customer pain point',
+                                    format: relatedAngle.format || 'blog_post',
+                                    audience: relatedAngle.target_audience || 'unknown',
+                                    topic: painPoint.category || 'other',
+                                    priority: call.priority_score || 5,
+                                    status: savedStatus,
+                                    generated_content: content,
+                                    details: relatedAngle,
+                                    painPoint: painPoint,
+                                    insight: relatedInsight,
+                                    sentiment: call.sentiment,
+                                    outcome: call.outcome,
+                                    customerQuote: painPoint.direct_quote || ''
+                                });
                             });
-                        });
+                        }
                     } catch (e) {}
                 });
                 
@@ -197,7 +204,12 @@
                         <div class="card ${item.priority >= 7 ? 'high-priority' : ''} ${isGenerating ? 'generating' : ''}" 
                              data-id="${item.id}" 
                              onclick="openCard('${item.id}')">
-                            <div class="card-title">${item.title}</div>
+                            <div style="display:flex;justify-content:space-between;align-items:start;margin-bottom:8px;">
+                                <div class="card-title" style="flex:1;">${item.title}</div>
+                                <div style="background:#2196f3;color:white;padding:4px 10px;border-radius:12px;font-weight:700;font-size:12px;margin-left:10px;">
+                                    #${item.cardNumber}
+                                </div>
+                            </div>
                             <div class="card-meta">
                                 <span>${item.format}</span>
                                 <span>${item.audience}</span>
@@ -341,7 +353,10 @@
             const idea = allIdeas.find(i => i.id === id);
             if (!idea) return;
 
-            document.getElementById('modalTitle').textContent = idea.title;
+            document.getElementById('modalTitle').innerHTML = `
+                <span style="background:#2196f3;color:white;padding:6px 12px;border-radius:16px;font-size:14px;margin-right:12px;">#${idea.cardNumber}</span>
+                ${idea.title}
+            `;
             document.getElementById('modalBody').innerHTML = `
                 <div style="margin-bottom:20px;padding:15px;background:#f5f5f5;border-radius:8px;">
                     <div class="detail-label">Move to Column</div>
