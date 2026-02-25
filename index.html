@@ -20,85 +20,28 @@
         .column.review h2 { border-color: #ff9800; }
         .column.scheduled h2 { border-color: #9c27b0; }
         .column.published h2 { border-color: #4caf50; }
-        .card { background: #fafafa; border-radius: 8px; padding: 14px; margin-bottom: 12px; cursor: move; border-left: 3px solid #ddd; transition: all 0.2s; user-select: none; -webkit-user-select: none; touch-action: none; min-height: 180px; }
+        .card { background: #fafafa; border-radius: 8px; padding: 12px; margin-bottom: 10px; cursor: move; border-left: 3px solid #ddd; transition: all 0.2s; }
         .card:hover { transform: translateY(-2px); box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
         .card.dragging { opacity: 0.5; }
-        .card.high-priority { border-left-color: #f44336; background: #fff5f5; }
+        .card.high-priority { border-left-color: #f44336; }
         .card.generating { border-left-color: #2196f3; animation: pulse 2s infinite; }
         @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.7; } }
-        .card-title { font-weight: 600; font-size: 13px; margin-bottom: 6px; color: #333; line-height: 1.4; }
-        .card-detail { font-size: 11px; color: #555; margin: 4px 0 8px 0; line-height: 1.5; }
-        .card-detail-label { font-weight: 700; color: #666; font-size: 10px; margin-top: 10px; margin-bottom: 4px; display: block; }
-        .card-meta { display: flex; gap: 6px; font-size: 10px; color: #888; flex-wrap: wrap; margin-top: 12px; padding-top: 10px; border-top: 1px solid #eee; }
-        .card-meta span { background: #e0e0e0; padding: 3px 8px; border-radius: 10px; }
+        .card-title { font-weight: 600; font-size: 14px; margin-bottom: 8px; color: #333; }
+        .card-meta { display: flex; gap: 10px; font-size: 11px; color: #888; flex-wrap: wrap; }
+        .card-meta span { background: #eee; padding: 2px 8px; border-radius: 10px; }
         .card-meta .status-badge { background: #2196f3; color: white; font-weight: 600; }
         .loading { text-align: center; padding: 40px; color: #888; }
         .error { text-align: center; padding: 40px; color: #f44336; background: #ffebee; border-radius: 8px; margin: 20px; }
-        .modal { display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); z-index: 1000; padding: 20px; overflow-y: auto; }
-        .modal.active { display: flex; align-items: flex-start; justify-content: center; padding-top: 40px; }
-        .modal-content { background: #fff; border-radius: 16px; max-width: 800px; width: 100%; max-height: 90vh; overflow-y: auto; }
-        .modal-header { background: #333; color: #fff; padding: 20px; display: flex; justify-content: space-between; align-items: center; border-radius: 16px 16px 0 0; }
-        .modal-header h2 { font-size: 18px; line-height: 1.4; }
-        .close-btn { background: none; border: none; color: #fff; font-size: 28px; cursor: pointer; line-height: 1; padding: 0; margin-left: 15px; flex-shrink: 0; }
-        .modal-body { padding: 20px; }
-        .info-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-bottom: 20px; }
-        .info-item { background: #f5f5f5; padding: 10px; border-radius: 8px; }
-        .info-item label { display: block; font-size: 10px; color: #888; margin-bottom: 3px; text-transform: uppercase; font-weight: 600; }
-        .info-item span { font-size: 13px; color: #333; }
-        @media (max-width: 600px) { .info-grid { grid-template-columns: 1fr; } }
     </style>
 </head>
 <body>
     <div class="header">
         <h1>📋 Content Board</h1>
         <div class="stats" id="stats">Loading...</div>
-        
-        <div style="display:flex;gap:10px;margin-top:15px;flex-wrap:wrap;align-items:center;">
-            <select id="filterFormat" onchange="applyFilters()" style="padding:8px;border:1px solid #ddd;border-radius:6px;font-size:13px;">
-                <option value="">All Formats</option>
-            </select>
-            
-            <select id="filterAudience" onchange="applyFilters()" style="padding:8px;border:1px solid #ddd;border-radius:6px;font-size:13px;">
-                <option value="">All Audiences</option>
-            </select>
-            
-            <select id="filterTopic" onchange="applyFilters()" style="padding:8px;border:1px solid #ddd;border-radius:6px;font-size:13px;">
-                <option value="">All Topics</option>
-            </select>
-            
-            <select id="filterPriority" onchange="applyFilters()" style="padding:8px;border:1px solid #ddd;border-radius:6px;font-size:13px;">
-                <option value="">All Priorities</option>
-                <option value="high">High (7+)</option>
-                <option value="medium">Medium (4-6)</option>
-                <option value="low">Low (1-3)</option>
-            </select>
-            
-            <select id="filterOutcome" onchange="applyFilters()" style="padding:8px;border:1px solid #ddd;border-radius:6px;font-size:13px;">
-                <option value="">All Outcomes</option>
-            </select>
-            
-            <button onclick="resetFilters()" style="padding:8px 15px;background:#ff9800;color:white;border:none;border-radius:6px;cursor:pointer;font-size:13px;font-weight:600;">
-                Reset Filters
-            </button>
-        </div>
-        
-        <p style="margin-top:10px;font-size:13px;color:#666;">Drag cards to WRITING to queue content generation automatically</p>
     </div>
     
     <div class="board" id="board">
         <div class="loading">Loading content ideas...</div>
-    </div>
-
-    <div class="modal" id="modal">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h2 id="modalTitle">Content Details</h2>
-                <button class="close-btn" onclick="closeModal()">&times;</button>
-            </div>
-            <div class="modal-body" id="modalBody">
-                Loading...
-            </div>
-        </div>
     </div>
 
     <script>
@@ -130,23 +73,10 @@
                             ? JSON.parse(call.content_angles)
                             : call.content_angles || [];
                         
-                        // Parse pain points and insights
-                        const painPoints = typeof call.pain_points === 'string' 
-                            ? JSON.parse(call.pain_points) 
-                            : call.pain_points || [];
-                        const productInsights = typeof call.product_insights === 'string'
-                            ? JSON.parse(call.product_insights)
-                            : call.product_insights || [];
-                        
                         angles.forEach((angle, idx) => {
                             const ideaId = `${call.call_id}-${idx}`;
                             const savedStatus = localStorage.getItem(`card-status-${ideaId}`) || 'ideas';
                             const savedContent = localStorage.getItem(`card-content-${ideaId}`);
-                            
-                            // Get relevant pain point (first one, or most relevant)
-                            const painPoint = painPoints[0] || null;
-                            // Get relevant insight (first one, or most relevant)
-                            const insight = productInsights[0] || null;
                             
                             allIdeas.push({
                                 id: ideaId,
@@ -159,18 +89,12 @@
                                 priority: call.priority_score || 5,
                                 status: savedStatus,
                                 generated_content: savedContent,
-                                details: angle,
-                                painPoint: painPoint,
-                                insight: insight,
-                                sentiment: call.sentiment,
-                                outcome: call.outcome,
-                                customer_segment: call.customer_segment
+                                details: angle
                             });
                         });
                     } catch (e) {}
                 });
                 
-                populateFilters();
                 renderBoard();
                 updateStats();
                 startPolling();
@@ -185,80 +109,6 @@
             }
         }
 
-        function populateFilters() {
-            // Get unique values
-            const formats = [...new Set(allIdeas.map(i => i.format))].sort();
-            const audiences = [...new Set(allIdeas.map(i => i.audience))].sort();
-            const topics = [...new Set(allIdeas.map(i => i.topic))].sort();
-            const outcomes = [...new Set(allIdeas.map(i => i.outcome).filter(o => o))].sort();
-            
-            // Populate format dropdown
-            const formatSelect = document.getElementById('filterFormat');
-            formatSelect.innerHTML = '<option value="">All Formats</option>' +
-                formats.map(f => `<option value="${f}">${f.replace(/_/g, ' ')}</option>`).join('');
-            
-            // Populate audience dropdown
-            const audienceSelect = document.getElementById('filterAudience');
-            audienceSelect.innerHTML = '<option value="">All Audiences</option>' +
-                audiences.map(a => `<option value="${a}">${a.replace(/_/g, ' ')}</option>`).join('');
-            
-            // Populate topic dropdown
-            const topicSelect = document.getElementById('filterTopic');
-            topicSelect.innerHTML = '<option value="">All Topics</option>' +
-                topics.map(t => `<option value="${t}">${t.replace(/_/g, ' ')}</option>`).join('');
-            
-            // Populate outcome dropdown
-            const outcomeSelect = document.getElementById('filterOutcome');
-            outcomeSelect.innerHTML = '<option value="">All Outcomes</option>' +
-                outcomes.map(o => `<option value="${o}">${o.replace(/_/g, ' ')}</option>`).join('');
-        }
-
-        function applyFilters() {
-            renderBoard();
-            updateStats();
-        }
-
-        function resetFilters() {
-            document.getElementById('filterFormat').value = '';
-            document.getElementById('filterAudience').value = '';
-            document.getElementById('filterTopic').value = '';
-            document.getElementById('filterPriority').value = '';
-            document.getElementById('filterOutcome').value = '';
-            renderBoard();
-            updateStats();
-        }
-
-        function getFilteredIdeas() {
-            const filterFormat = document.getElementById('filterFormat').value;
-            const filterAudience = document.getElementById('filterAudience').value;
-            const filterTopic = document.getElementById('filterTopic').value;
-            const filterPriority = document.getElementById('filterPriority').value;
-            const filterOutcome = document.getElementById('filterOutcome').value;
-            
-            return allIdeas.filter(idea => {
-                // Format filter
-                if (filterFormat && idea.format !== filterFormat) return false;
-                
-                // Audience filter
-                if (filterAudience && idea.audience !== filterAudience) return false;
-                
-                // Topic filter
-                if (filterTopic && idea.topic !== filterTopic) return false;
-                
-                // Priority filter
-                if (filterPriority) {
-                    if (filterPriority === 'high' && idea.priority < 7) return false;
-                    if (filterPriority === 'medium' && (idea.priority < 4 || idea.priority > 6)) return false;
-                    if (filterPriority === 'low' && idea.priority > 3) return false;
-                }
-                
-                // Outcome filter
-                if (filterOutcome && idea.outcome !== filterOutcome) return false;
-                
-                return true;
-            });
-        }
-
         function renderBoard() {
             const columns = {
                 ideas: { title: '💡 IDEAS', items: [] },
@@ -268,8 +118,7 @@
                 published: { title: '✅ PUBLISHED', items: [] }
             };
 
-            const filteredIdeas = getFilteredIdeas();
-            filteredIdeas.forEach(idea => {
+            allIdeas.forEach(idea => {
                 const status = idea.status || 'ideas';
                 if (columns[status]) columns[status].items.push(idea);
             });
@@ -279,50 +128,14 @@
                     <h2>${col.title} (${col.items.length})</h2>
                     ${col.items.map(item => {
                         const isGenerating = item.status === 'writing' && !item.generated_content;
-                        const hook = item.details.hook || item.title;
-                        const topicDetail = item.details.topic_detail || '';
-                        const topicCategory = item.details.topic_category ? item.details.topic_category.replace(/_/g, ' ') : '';
-                        
-                        // Customer quote and pain point
-                        const customerQuote = item.painPoint?.direct_quote || '';
-                        const painPointDesc = item.painPoint?.description || '';
-                        const severity = item.painPoint?.severity || '';
-                        
-                        // Business insight
-                        const insightText = item.insight?.insight || '';
-                        const impact = item.insight?.impact || '';
-                        
                         return `
                         <div class="card ${item.priority >= 7 ? 'high-priority' : ''} ${isGenerating ? 'generating' : ''}" 
                              data-id="${item.id}" 
                              draggable="true">
-                            
-                            ${customerQuote ? `
-                                <div class="card-detail-label">💬 Customer Quote</div>
-                                <div class="card-detail" style="font-style:italic;background:#fff3cd;padding:6px;border-radius:4px;margin-bottom:8px;">"${customerQuote}"</div>
-                            ` : ''}
-                            
-                            ${painPointDesc ? `
-                                <div class="card-detail-label">😤 Pain Point ${severity ? `(${severity})` : ''}</div>
-                                <div class="card-detail" style="color:#d32f2f;margin-bottom:8px;">${painPointDesc}</div>
-                            ` : ''}
-                            
-                            <div class="card-detail-label">💡 Content Angle</div>
-                            <div class="card-title">${hook}</div>
-                            
-                            ${topicDetail ? `
-                                <div class="card-detail">${topicDetail}</div>
-                            ` : ''}
-                            
-                            ${insightText ? `
-                                <div class="card-detail-label" style="margin-top:8px;">📊 Business Insight ${impact ? `(${impact} impact)` : ''}</div>
-                                <div class="card-detail" style="color:#1976d2;">${insightText}</div>
-                            ` : ''}
-                            
+                            <div class="card-title">${item.title}</div>
                             <div class="card-meta">
-                                <span>${item.format.replace(/_/g, ' ')}</span>
+                                <span>${item.format}</span>
                                 <span>${item.audience}</span>
-                                <span>${item.customer_segment || ''}</span>
                                 <span>P${item.priority}</span>
                                 ${isGenerating ? '<span class="status-badge">Generating...</span>' : ''}
                             </div>
@@ -338,19 +151,8 @@
         function initDragAndDrop() {
             const cards = document.querySelectorAll('.card');
             const columns = document.querySelectorAll('.column');
-            let touchStartY = 0;
-            let touchStartX = 0;
-            let touchMoved = false;
 
             cards.forEach(card => {
-                // Desktop click to open
-                card.addEventListener('click', e => {
-                    if (!draggedCard) { // Only open if not dragging
-                        openCard(card.dataset.id);
-                    }
-                });
-
-                // Mouse events (desktop drag)
                 card.addEventListener('dragstart', e => {
                     draggedCard = card;
                     card.classList.add('dragging');
@@ -361,90 +163,8 @@
                     card.classList.remove('dragging');
                     draggedCard = null;
                 });
-
-                // Touch events (mobile)
-                card.addEventListener('touchstart', e => {
-                    touchStartY = e.touches[0].clientY;
-                    touchStartX = e.touches[0].clientX;
-                    touchMoved = false;
-                    draggedCard = card;
-                    
-                    // Delay adding dragging class to distinguish tap from drag
-                    setTimeout(() => {
-                        if (draggedCard === card) {
-                            card.classList.add('dragging');
-                        }
-                    }, 150);
-                }, { passive: true });
-
-                card.addEventListener('touchmove', e => {
-                    if (!draggedCard) return;
-                    
-                    const touch = e.touches[0];
-                    const deltaX = Math.abs(touch.clientX - touchStartX);
-                    const deltaY = Math.abs(touch.clientY - touchStartY);
-                    
-                    // If moved more than 10px, it's a drag
-                    if (deltaX > 10 || deltaY > 10) {
-                        touchMoved = true;
-                        card.classList.add('dragging');
-                        
-                        const elementAtPoint = document.elementFromPoint(touch.clientX, touch.clientY);
-                        const targetColumn = elementAtPoint?.closest('.column');
-                        
-                        // Remove drag-over from all columns
-                        columns.forEach(col => col.classList.remove('drag-over'));
-                        
-                        // Add to current column
-                        if (targetColumn) {
-                            targetColumn.classList.add('drag-over');
-                        }
-                    }
-                }, { passive: true });
-
-                card.addEventListener('touchend', e => {
-                    if (!draggedCard) return;
-                    
-                    const touch = e.changedTouches[0];
-                    const deltaX = Math.abs(touch.clientX - touchStartX);
-                    const deltaY = Math.abs(touch.clientY - touchStartY);
-                    
-                    // If didn't move much (< 10px), it's a tap - open the card
-                    if (!touchMoved && deltaX < 10 && deltaY < 10) {
-                        openCard(card.dataset.id);
-                    } else {
-                        // It's a drag - process the move
-                        const elementAtPoint = document.elementFromPoint(touch.clientX, touch.clientY);
-                        const targetColumn = elementAtPoint?.closest('.column');
-                        
-                        if (targetColumn && draggedCard) {
-                            const cardId = draggedCard.dataset.id;
-                            const newStatus = targetColumn.dataset.column;
-                            
-                            const idea = allIdeas.find(i => i.id === cardId);
-                            if (idea) {
-                                idea.status = newStatus;
-                                localStorage.setItem(`card-status-${cardId}`, newStatus);
-                                
-                                // Notify backend if moved to "writing"
-                                if (newStatus === 'writing' && !idea.generated_content) {
-                                    notifyContentGeneration(idea);
-                                }
-                                
-                                renderBoard();
-                            }
-                        }
-                    }
-                    
-                    // Cleanup
-                    card.classList.remove('dragging');
-                    columns.forEach(col => col.classList.remove('drag-over'));
-                    draggedCard = null;
-                    touchMoved = false;
-                }, { passive: true });
             });
 
-            // Mouse events for columns (desktop)
             columns.forEach(column => {
                 column.addEventListener('dragover', e => {
                     e.preventDefault();
@@ -481,9 +201,9 @@
         }
 
         async function notifyContentGeneration(idea) {
-            // Write generation request to Supabase
+            // POST to queue server
             const request = {
-                card_id: idea.id,
+                id: idea.id,
                 call_id: idea.call_id,
                 title: idea.title,
                 format: idea.format,
@@ -491,36 +211,23 @@
                 hook: idea.details.hook,
                 target_audience: idea.audience,
                 priority_score: idea.priority,
-                status: 'pending'
+                requested_at: Date.now()
             };
             
             try {
-                const response = await fetch(`${SUPABASE_URL}/rest/v1/content_generation_queue`, {
+                const response = await fetch('http://localhost:18791/queue', {
                     method: 'POST',
-                    headers: {
-                        'apikey': SUPABASE_KEY,
-                        'Authorization': `Bearer ${SUPABASE_KEY}`,
-                        'Content-Type': 'application/json',
-                        'Prefer': 'return=representation'
-                    },
+                    headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify(request)
                 });
                 
                 if (response.ok) {
-                    console.log('✅ Content generation queued:', idea.title);
-                    // Show brief confirmation
-                    const msg = document.createElement('div');
-                    msg.textContent = '✅ Content queued for generation';
-                    msg.style.cssText = 'position:fixed;top:20px;right:20px;background:#4caf50;color:white;padding:15px 20px;border-radius:8px;z-index:9999;font-weight:600;';
-                    document.body.appendChild(msg);
-                    setTimeout(() => msg.remove(), 3000);
+                    console.log('✅ Generation request queued:', idea.id);
                 } else {
-                    console.error('❌ Failed to queue:', await response.text());
-                    alert('❌ Failed to queue content. Check console for details.');
+                    console.error('❌ Failed to queue request:', await response.text());
                 }
             } catch (error) {
-                console.error('❌ Error queuing:', error);
-                alert('❌ Error queuing content: ' + error.message);
+                console.error('❌ Error queuing request:', error);
             }
         }
 
@@ -557,158 +264,13 @@
         }
 
         function updateStats() {
-            const filteredIdeas = getFilteredIdeas();
-            const total = filteredIdeas.length;
-            const totalAll = allIdeas.length;
-            const writing = filteredIdeas.filter(i => i.status === 'writing').length;
-            const review = filteredIdeas.filter(i => i.status === 'review').length;
+            const total = allIdeas.length;
+            const writing = allIdeas.filter(i => i.status === 'writing').length;
+            const review = allIdeas.filter(i => i.status === 'review').length;
             
-            const filterText = total !== totalAll ? ` (${total} of ${totalAll} shown)` : '';
             document.getElementById('stats').textContent = 
-                `${totalAll} content ideas${filterText} • ${writing} in progress • ${review} awaiting review`;
+                `${total} content ideas • ${writing} in progress • ${review} awaiting review`;
         }
-
-        async function triggerContentGeneration() {
-            const writingCards = allIdeas.filter(i => i.status === 'writing' && !i.generated_content);
-            
-            if (writingCards.length === 0) {
-                alert('No cards in Writing queue');
-                return;
-            }
-            
-            // Create simple text summary for WhatsApp
-            const message = `Generate AEO content for ${writingCards.length} card(s):\n\n` +
-                writingCards.map((card, idx) => 
-                    `${idx + 1}. ${card.title}\n   Format: ${card.format}\n   Audience: ${card.audience}\n   ID: ${card.id}`
-                ).join('\n\n');
-            
-            // Copy to clipboard
-            try {
-                await navigator.clipboard.writeText(message);
-                alert(`✅ Copied ${writingCards.length} content request(s) to clipboard!\n\nPaste in WhatsApp to send to Curl.`);
-            } catch (e) {
-                // Fallback: show text to copy manually
-                const textarea = document.createElement('textarea');
-                textarea.value = message;
-                textarea.style.position = 'fixed';
-                textarea.style.opacity = '0';
-                document.body.appendChild(textarea);
-                textarea.select();
-                document.execCommand('copy');
-                document.body.removeChild(textarea);
-                alert(`✅ Copied to clipboard! Paste in WhatsApp.`);
-            }
-        }
-
-        function openCard(id) {
-            const idea = allIdeas.find(i => i.id === id);
-            if (!idea) return;
-
-            document.getElementById('modalTitle').textContent = idea.title;
-            document.getElementById('modalBody').innerHTML = `
-                <div style="margin-bottom:20px;padding:15px;background:#f5f5f5;border-radius:8px;">
-                    <label style="display:block;font-size:12px;text-transform:uppercase;color:#888;margin-bottom:8px;font-weight:600;">Move to Column</label>
-                    <select id="statusSelect" onchange="changeCardStatus('${idea.id}')" style="width:100%;padding:10px;border:1px solid #ddd;border-radius:6px;font-size:14px;background:white;cursor:pointer;">
-                        <option value="ideas" ${idea.status === 'ideas' ? 'selected' : ''}>💡 IDEAS</option>
-                        <option value="writing" ${idea.status === 'writing' ? 'selected' : ''}>✍️ WRITING</option>
-                        <option value="review" ${idea.status === 'review' ? 'selected' : ''}>👀 REVIEW</option>
-                        <option value="scheduled" ${idea.status === 'scheduled' ? 'selected' : ''}>📅 SCHEDULED</option>
-                        <option value="published" ${idea.status === 'published' ? 'selected' : ''}>✅ PUBLISHED</option>
-                    </select>
-                </div>
-                
-                <div class="info-grid">
-                    <div class="info-item">
-                        <label>Format</label>
-                        <span>${idea.format.replace(/_/g, ' ')}</span>
-                    </div>
-                    <div class="info-item">
-                        <label>Audience</label>
-                        <span>${idea.audience}</span>
-                    </div>
-                    <div class="info-item">
-                        <label>Priority</label>
-                        <span>${idea.priority}/10</span>
-                    </div>
-                    <div class="info-item">
-                        <label>Topic</label>
-                        <span>${idea.topic.replace(/_/g, ' ')}</span>
-                    </div>
-                    <div class="info-item">
-                        <label>Call ID</label>
-                        <span>${idea.call_id.substring(0, 20)}...</span>
-                    </div>
-                    <div class="info-item">
-                        <label>Index</label>
-                        <span>${idea.index}</span>
-                    </div>
-                </div>
-                
-                <div style="margin-top:20px;">
-                    <h3 style="font-size:12px;text-transform:uppercase;color:#888;margin-bottom:10px;">Hook</h3>
-                    <div style="background:#f5f5f5;padding:15px;border-radius:8px;line-height:1.6;">
-                        ${idea.details.hook || 'No hook available'}
-                    </div>
-                </div>
-                
-                ${idea.details.topic_detail ? `
-                    <div style="margin-top:20px;">
-                        <h3 style="font-size:12px;text-transform:uppercase;color:#888;margin-bottom:10px;">Topic Detail</h3>
-                        <div style="background:#f5f5f5;padding:15px;border-radius:8px;line-height:1.6;">
-                            ${idea.details.topic_detail}
-                        </div>
-                    </div>
-                ` : ''}
-                
-                ${idea.generated_content ? `
-                    <div style="margin-top:20px;">
-                        <h3 style="font-size:12px;text-transform:uppercase;color:#888;margin-bottom:10px;">Generated Content</h3>
-                        <div style="background:#e8f5e9;padding:15px;border-radius:8px;line-height:1.6;max-height:400px;overflow-y:auto;">
-                            <pre style="white-space:pre-wrap;font-family:inherit;margin:0;">${idea.generated_content}</pre>
-                        </div>
-                    </div>
-                ` : ''}
-            `;
-            document.getElementById('modal').classList.add('active');
-        }
-
-        function closeModal() {
-            document.getElementById('modal').classList.remove('active');
-        }
-
-        function changeCardStatus(cardId) {
-            const newStatus = document.getElementById('statusSelect').value;
-            const idea = allIdeas.find(i => i.id === cardId);
-            
-            if (idea) {
-                idea.status = newStatus;
-                localStorage.setItem(`card-status-${cardId}`, newStatus);
-                
-                // Notify backend if moved to "writing"
-                if (newStatus === 'writing' && !idea.generated_content) {
-                    notifyContentGeneration(idea);
-                }
-                
-                closeModal();
-                renderBoard();
-                
-                // Show confirmation
-                const statusNames = {
-                    'ideas': '💡 IDEAS',
-                    'writing': '✍️ WRITING',
-                    'review': '👀 REVIEW',
-                    'scheduled': '📅 SCHEDULED',
-                    'published': '✅ PUBLISHED'
-                };
-                
-                alert(`✅ Moved to ${statusNames[newStatus]}`);
-            }
-        }
-
-        // Close modal when clicking outside
-        document.getElementById('modal').addEventListener('click', e => {
-            if (e.target.id === 'modal') closeModal();
-        });
 
         loadContentIdeas();
     </script>
