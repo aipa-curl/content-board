@@ -20,7 +20,7 @@
         .column.review h2 { border-color: #ff9800; }
         .column.scheduled h2 { border-color: #9c27b0; }
         .column.published h2 { border-color: #4caf50; }
-        .card { background: #fafafa; border-radius: 8px; padding: 12px; margin-bottom: 10px; cursor: move; border-left: 3px solid #ddd; transition: all 0.2s; }
+        .card { background: #fafafa; border-radius: 8px; padding: 12px; margin-bottom: 10px; cursor: move; border-left: 3px solid #ddd; transition: all 0.2s; user-select: none; -webkit-user-select: none; touch-action: none; }
         .card:hover { transform: translateY(-2px); box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
         .card.dragging { opacity: 0.5; }
         .card.high-priority { border-left-color: #f44336; }
@@ -151,8 +151,11 @@
         function initDragAndDrop() {
             const cards = document.querySelectorAll('.card');
             const columns = document.querySelectorAll('.column');
+            let touchStartY = 0;
+            let touchStartX = 0;
 
             cards.forEach(card => {
+                // Mouse events (desktop)
                 card.addEventListener('dragstart', e => {
                     draggedCard = card;
                     card.classList.add('dragging');
@@ -163,8 +166,64 @@
                     card.classList.remove('dragging');
                     draggedCard = null;
                 });
+
+                // Touch events (mobile)
+                card.addEventListener('touchstart', e => {
+                    draggedCard = card;
+                    card.classList.add('dragging');
+                    touchStartY = e.touches[0].clientY;
+                    touchStartX = e.touches[0].clientX;
+                }, { passive: true });
+
+                card.addEventListener('touchmove', e => {
+                    if (!draggedCard) return;
+                    
+                    const touch = e.touches[0];
+                    const elementAtPoint = document.elementFromPoint(touch.clientX, touch.clientY);
+                    const targetColumn = elementAtPoint?.closest('.column');
+                    
+                    // Remove drag-over from all columns
+                    columns.forEach(col => col.classList.remove('drag-over'));
+                    
+                    // Add to current column
+                    if (targetColumn) {
+                        targetColumn.classList.add('drag-over');
+                    }
+                }, { passive: true });
+
+                card.addEventListener('touchend', e => {
+                    if (!draggedCard) return;
+                    
+                    const touch = e.changedTouches[0];
+                    const elementAtPoint = document.elementFromPoint(touch.clientX, touch.clientY);
+                    const targetColumn = elementAtPoint?.closest('.column');
+                    
+                    if (targetColumn && draggedCard) {
+                        const cardId = draggedCard.dataset.id;
+                        const newStatus = targetColumn.dataset.column;
+                        
+                        const idea = allIdeas.find(i => i.id === cardId);
+                        if (idea) {
+                            idea.status = newStatus;
+                            localStorage.setItem(`card-status-${cardId}`, newStatus);
+                            
+                            // Notify backend if moved to "writing"
+                            if (newStatus === 'writing' && !idea.generated_content) {
+                                notifyContentGeneration(idea);
+                            }
+                            
+                            renderBoard();
+                        }
+                    }
+                    
+                    // Cleanup
+                    draggedCard.classList.remove('dragging');
+                    columns.forEach(col => col.classList.remove('drag-over'));
+                    draggedCard = null;
+                }, { passive: true });
             });
 
+            // Mouse events for columns (desktop)
             columns.forEach(column => {
                 column.addEventListener('dragover', e => {
                     e.preventDefault();
