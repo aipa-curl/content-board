@@ -52,6 +52,36 @@
     <div class="header">
         <h1>📋 Content Board</h1>
         <div class="stats" id="stats">Loading...</div>
+        
+        <div style="display:flex;gap:10px;margin-top:15px;flex-wrap:wrap;align-items:center;">
+            <select id="filterFormat" onchange="applyFilters()" style="padding:8px;border:1px solid #ddd;border-radius:6px;font-size:13px;">
+                <option value="">All Formats</option>
+            </select>
+            
+            <select id="filterAudience" onchange="applyFilters()" style="padding:8px;border:1px solid #ddd;border-radius:6px;font-size:13px;">
+                <option value="">All Audiences</option>
+            </select>
+            
+            <select id="filterTopic" onchange="applyFilters()" style="padding:8px;border:1px solid #ddd;border-radius:6px;font-size:13px;">
+                <option value="">All Topics</option>
+            </select>
+            
+            <select id="filterPriority" onchange="applyFilters()" style="padding:8px;border:1px solid #ddd;border-radius:6px;font-size:13px;">
+                <option value="">All Priorities</option>
+                <option value="high">High (7+)</option>
+                <option value="medium">Medium (4-6)</option>
+                <option value="low">Low (1-3)</option>
+            </select>
+            
+            <select id="filterOutcome" onchange="applyFilters()" style="padding:8px;border:1px solid #ddd;border-radius:6px;font-size:13px;">
+                <option value="">All Outcomes</option>
+            </select>
+            
+            <button onclick="resetFilters()" style="padding:8px 15px;background:#ff9800;color:white;border:none;border-radius:6px;cursor:pointer;font-size:13px;font-weight:600;">
+                Reset Filters
+            </button>
+        </div>
+        
         <p style="margin-top:10px;font-size:13px;color:#666;">Drag cards to WRITING to queue content generation automatically</p>
     </div>
     
@@ -140,6 +170,7 @@
                     } catch (e) {}
                 });
                 
+                populateFilters();
                 renderBoard();
                 updateStats();
                 startPolling();
@@ -154,6 +185,80 @@
             }
         }
 
+        function populateFilters() {
+            // Get unique values
+            const formats = [...new Set(allIdeas.map(i => i.format))].sort();
+            const audiences = [...new Set(allIdeas.map(i => i.audience))].sort();
+            const topics = [...new Set(allIdeas.map(i => i.topic))].sort();
+            const outcomes = [...new Set(allIdeas.map(i => i.outcome).filter(o => o))].sort();
+            
+            // Populate format dropdown
+            const formatSelect = document.getElementById('filterFormat');
+            formatSelect.innerHTML = '<option value="">All Formats</option>' +
+                formats.map(f => `<option value="${f}">${f.replace(/_/g, ' ')}</option>`).join('');
+            
+            // Populate audience dropdown
+            const audienceSelect = document.getElementById('filterAudience');
+            audienceSelect.innerHTML = '<option value="">All Audiences</option>' +
+                audiences.map(a => `<option value="${a}">${a.replace(/_/g, ' ')}</option>`).join('');
+            
+            // Populate topic dropdown
+            const topicSelect = document.getElementById('filterTopic');
+            topicSelect.innerHTML = '<option value="">All Topics</option>' +
+                topics.map(t => `<option value="${t}">${t.replace(/_/g, ' ')}</option>`).join('');
+            
+            // Populate outcome dropdown
+            const outcomeSelect = document.getElementById('filterOutcome');
+            outcomeSelect.innerHTML = '<option value="">All Outcomes</option>' +
+                outcomes.map(o => `<option value="${o}">${o.replace(/_/g, ' ')}</option>`).join('');
+        }
+
+        function applyFilters() {
+            renderBoard();
+            updateStats();
+        }
+
+        function resetFilters() {
+            document.getElementById('filterFormat').value = '';
+            document.getElementById('filterAudience').value = '';
+            document.getElementById('filterTopic').value = '';
+            document.getElementById('filterPriority').value = '';
+            document.getElementById('filterOutcome').value = '';
+            renderBoard();
+            updateStats();
+        }
+
+        function getFilteredIdeas() {
+            const filterFormat = document.getElementById('filterFormat').value;
+            const filterAudience = document.getElementById('filterAudience').value;
+            const filterTopic = document.getElementById('filterTopic').value;
+            const filterPriority = document.getElementById('filterPriority').value;
+            const filterOutcome = document.getElementById('filterOutcome').value;
+            
+            return allIdeas.filter(idea => {
+                // Format filter
+                if (filterFormat && idea.format !== filterFormat) return false;
+                
+                // Audience filter
+                if (filterAudience && idea.audience !== filterAudience) return false;
+                
+                // Topic filter
+                if (filterTopic && idea.topic !== filterTopic) return false;
+                
+                // Priority filter
+                if (filterPriority) {
+                    if (filterPriority === 'high' && idea.priority < 7) return false;
+                    if (filterPriority === 'medium' && (idea.priority < 4 || idea.priority > 6)) return false;
+                    if (filterPriority === 'low' && idea.priority > 3) return false;
+                }
+                
+                // Outcome filter
+                if (filterOutcome && idea.outcome !== filterOutcome) return false;
+                
+                return true;
+            });
+        }
+
         function renderBoard() {
             const columns = {
                 ideas: { title: '💡 IDEAS', items: [] },
@@ -163,7 +268,8 @@
                 published: { title: '✅ PUBLISHED', items: [] }
             };
 
-            allIdeas.forEach(idea => {
+            const filteredIdeas = getFilteredIdeas();
+            filteredIdeas.forEach(idea => {
                 const status = idea.status || 'ideas';
                 if (columns[status]) columns[status].items.push(idea);
             });
@@ -451,12 +557,15 @@
         }
 
         function updateStats() {
-            const total = allIdeas.length;
-            const writing = allIdeas.filter(i => i.status === 'writing').length;
-            const review = allIdeas.filter(i => i.status === 'review').length;
+            const filteredIdeas = getFilteredIdeas();
+            const total = filteredIdeas.length;
+            const totalAll = allIdeas.length;
+            const writing = filteredIdeas.filter(i => i.status === 'writing').length;
+            const review = filteredIdeas.filter(i => i.status === 'review').length;
             
+            const filterText = total !== totalAll ? ` (${total} of ${totalAll} shown)` : '';
             document.getElementById('stats').textContent = 
-                `${total} content ideas • ${writing} in progress • ${review} awaiting review`;
+                `${totalAll} content ideas${filterText} • ${writing} in progress • ${review} awaiting review`;
         }
 
         async function triggerContentGeneration() {
