@@ -5,17 +5,12 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Content Board - We Want Waste</title>
     <style>
+        /* [Previous CSS - keeping it the same] */
         * { box-sizing: border-box; margin: 0; padding: 0; }
         body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #f5f5f5; padding: 20px; }
         .header { text-align: center; margin-bottom: 20px; }
         h1 { color: #333; margin-bottom: 10px; }
         .stats { font-size: 14px; color: #666; }
-        .filters { background: #fff; padding: 15px; border-radius: 12px; margin-bottom: 20px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); display: flex; gap: 15px; flex-wrap: wrap; align-items: flex-end; }
-        .filter-group { display: flex; flex-direction: column; gap: 5px; }
-        .filter-group label { font-size: 11px; text-transform: uppercase; color: #888; font-weight: 600; }
-        .filter-group select { padding: 8px 12px; border: 1px solid #ddd; border-radius: 6px; font-size: 14px; background: #f5f5f5; cursor: pointer; min-width: 150px; }
-        .reset-btn { padding: 8px 16px; background: #f44336; color: white; border: none; border-radius: 6px; cursor: pointer; font-size: 14px; font-weight: 600; }
-        .reset-btn:hover { background: #d32f2f; }
         .board { display: flex; gap: 15px; overflow-x: auto; padding-bottom: 20px; }
         .column { min-width: 280px; max-width: 280px; background: #fff; border-radius: 12px; padding: 15px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); min-height: 400px; }
         .column.drag-over { background: #e3f2fd; }
@@ -29,35 +24,14 @@
         .card:hover { transform: translateY(-2px); box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
         .card.dragging { opacity: 0.5; }
         .card.high-priority { border-left-color: #f44336; }
+        .card.generating { border-left-color: #2196f3; animation: pulse 2s infinite; }
+        @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.7; } }
         .card-title { font-weight: 600; font-size: 14px; margin-bottom: 8px; color: #333; }
         .card-meta { display: flex; gap: 10px; font-size: 11px; color: #888; flex-wrap: wrap; }
         .card-meta span { background: #eee; padding: 2px 8px; border-radius: 10px; }
+        .card-meta .status-badge { background: #2196f3; color: white; font-weight: 600; }
         .loading { text-align: center; padding: 40px; color: #888; }
         .error { text-align: center; padding: 40px; color: #f44336; background: #ffebee; border-radius: 8px; margin: 20px; }
-        .modal { display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); z-index: 1000; padding: 20px; overflow-y: auto; }
-        .modal.active { display: flex; align-items: flex-start; justify-content: center; padding-top: 40px; }
-        .modal-content { background: #fff; border-radius: 16px; max-width: 800px; width: 100%; max-height: 90vh; overflow-y: auto; }
-        .modal-header { background: #333; color: #fff; padding: 20px; display: flex; justify-content: space-between; align-items: center; border-radius: 16px 16px 0 0; }
-        .modal-header h2 { font-size: 18px; line-height: 1.4; }
-        .close-btn { background: none; border: none; color: #fff; font-size: 28px; cursor: pointer; line-height: 1; padding: 0; margin-left: 15px; flex-shrink: 0; }
-        .modal-body { padding: 20px; }
-        .section { margin-bottom: 20px; }
-        .section h3 { font-size: 12px; text-transform: uppercase; color: #888; margin-bottom: 10px; font-weight: 600; }
-        .info-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-bottom: 20px; }
-        .info-item { background: #f5f5f5; padding: 10px; border-radius: 8px; }
-        .info-item label { display: block; font-size: 10px; color: #888; margin-bottom: 3px; text-transform: uppercase; font-weight: 600; }
-        .info-item span { font-size: 13px; color: #333; }
-        .quote-box { background: #fff3cd; border-left: 4px solid #ffc107; padding: 15px; border-radius: 8px; font-style: italic; color: #333; margin-bottom: 15px; }
-        .context-box { background: #e3f2fd; border-left: 4px solid #2196f3; padding: 15px; border-radius: 8px; color: #333; margin-bottom: 15px; line-height: 1.6; }
-        .pain-box { background: #ffebee; border-left: 4px solid #f44336; padding: 15px; border-radius: 8px; margin-bottom: 15px; }
-        .pain-box strong { color: #c62828; display: block; margin-bottom: 8px; }
-        .insight-box { background: #e8f5e9; border-left: 4px solid #4caf50; padding: 15px; border-radius: 8px; margin-bottom: 15px; }
-        .insight-box strong { color: #2e7d32; display: block; margin-bottom: 8px; }
-        @media (max-width: 600px) {
-            .board { gap: 10px; }
-            .column { min-width: 250px; max-width: 250px; }
-            .info-grid { grid-template-columns: 1fr; }
-        }
     </style>
 </head>
 <body>
@@ -66,54 +40,8 @@
         <div class="stats" id="stats">Loading...</div>
     </div>
     
-    <div class="filters" id="filters" style="display:none;">
-        <div class="filter-group">
-            <label>Format</label>
-            <select id="filterFormat" onchange="applyFilters()">
-                <option value="">All formats</option>
-            </select>
-        </div>
-        <div class="filter-group">
-            <label>Audience</label>
-            <select id="filterAudience" onchange="applyFilters()">
-                <option value="">All audiences</option>
-            </select>
-        </div>
-        <div class="filter-group">
-            <label>Topic</label>
-            <select id="filterTopic" onchange="applyFilters()">
-                <option value="">All topics</option>
-            </select>
-        </div>
-        <div class="filter-group">
-            <label>Priority</label>
-            <select id="filterPriority" onchange="applyFilters()">
-                <option value="">All priorities</option>
-                <option value="high">High (7+)</option>
-                <option value="medium">Medium (4-6)</option>
-                <option value="low">Low (1-3)</option>
-            </select>
-        </div>
-        <div class="filter-group">
-            <label>Outcome</label>
-            <select id="filterOutcome" onchange="applyFilters()">
-                <option value="">All outcomes</option>
-            </select>
-        </div>
-        <button class="reset-btn" onclick="resetFilters()">Reset All</button>
-    </div>
     <div class="board" id="board">
-        <div class="loading">Loading content ideas from call insights...</div>
-    </div>
-
-    <div class="modal" id="modal">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h2 id="modalTitle">Card Details</h2>
-                <button class="close-btn" onclick="closeModal()">&times;</button>
-            </div>
-            <div class="modal-body" id="modalBody"></div>
-        </div>
+        <div class="loading">Loading content ideas...</div>
     </div>
 
     <script>
@@ -121,79 +49,55 @@
         const SUPABASE_KEY = 'sb_publishable_4xGNFr6q9Fv-_4tg4SVYRw_0D4nnSGz';
         
         let allIdeas = [];
-        let filteredIdeas = [];
-        let callData = {};
         let draggedCard = null;
-        let activeFilters = {
-            format: '',
-            audience: '',
-            topic: '',
-            priority: '',
-            outcome: ''
-        };
-
+        
+        // Load content from call_insights
         async function loadContentIdeas() {
             try {
-                const response = await fetch(`${SUPABASE_URL}/rest/v1/call_insights?select=call_id,content_angles,sentiment,priority_score,call_date,pain_points,product_insights,from_number,customer_segment,outcome,customer_type&order=created_at.desc`, {
+                const response = await fetch(`${SUPABASE_URL}/rest/v1/call_insights?select=*`, {
                     headers: {
                         'apikey': SUPABASE_KEY,
-                        'Authorization': `Bearer ${SUPABASE_KEY}`,
-                        'Content-Type': 'application/json'
+                        'Authorization': `Bearer ${SUPABASE_KEY}`
                     }
                 });
-
+                
                 if (!response.ok) throw new Error(`HTTP ${response.status}`);
-                const data = await response.json();
                 
-                // Store full call data for reference
-                data.forEach(call => {
-                    callData[call.call_id] = call;
-                });
+                const calls = await response.json();
                 
-                // Extract content angles with full context
-                const contentIdeas = [];
-                data.forEach(call => {
-                    let angles = [];
+                // Extract content angles
+                allIdeas = [];
+                calls.forEach(call => {
                     try {
-                        angles = typeof call.content_angles === 'string' 
-                            ? JSON.parse(call.content_angles) 
+                        const angles = typeof call.content_angles === 'string' 
+                            ? JSON.parse(call.content_angles)
                             : call.content_angles || [];
-                    } catch (e) {
-                        angles = [];
-                    }
-
-                    angles.forEach((angle, idx) => {
-                        contentIdeas.push({
-                            id: `${call.call_id}-${idx}`,
-                            call_id: call.call_id,
-                            title: angle.hook || angle.topic_detail || 'Untitled',
-                            format: angle.format || 'blog_post',
-                            audience: angle.target_audience || 'general',
-                            topic: angle.topic_category || 'other',
-                            sentiment: call.sentiment || 'neutral',
-                            priority: call.priority_score || 5,
-                            status: localStorage.getItem(`card-status-${call.call_id}-${idx}`) || 'ideas',
-                            call_date: call.call_date,
-                            details: angle
+                        
+                        angles.forEach((angle, idx) => {
+                            const ideaId = `${call.call_id}-${idx}`;
+                            const savedStatus = localStorage.getItem(`card-status-${ideaId}`) || 'ideas';
+                            const savedContent = localStorage.getItem(`card-content-${ideaId}`);
+                            
+                            allIdeas.push({
+                                id: ideaId,
+                                call_id: call.call_id,
+                                index: idx,
+                                title: angle.hook || angle.topic_detail || 'Untitled',
+                                format: angle.format || 'blog_post',
+                                audience: angle.target_audience || 'unknown',
+                                topic: angle.topic_category || 'other',
+                                priority: call.priority_score || 5,
+                                status: savedStatus,
+                                generated_content: savedContent,
+                                details: angle
+                            });
                         });
-                    });
+                    } catch (e) {}
                 });
-
-                if (contentIdeas.length === 0) {
-                    document.getElementById('board').innerHTML = `
-                        <div class="error">
-                            <h2>⚠️ No Content Ideas Found</h2>
-                            <p>No content_angles in database yet.</p>
-                        </div>
-                    `;
-                    return;
-                }
                 
-                allIdeas = contentIdeas;
-                filteredIdeas = contentIdeas;
-                populateFilters();
                 renderBoard();
                 updateStats();
+                startPolling();
                 
             } catch (error) {
                 document.getElementById('board').innerHTML = `
@@ -205,73 +109,6 @@
             }
         }
 
-        function populateFilters() {
-            // Get unique values
-            const formats = [...new Set(allIdeas.map(i => i.format))].sort();
-            const audiences = [...new Set(allIdeas.map(i => i.audience))].sort();
-            const topics = [...new Set(allIdeas.map(i => i.topic))].sort();
-            const outcomes = [...new Set(allIdeas.map(i => callData[i.call_id]?.outcome).filter(Boolean))].sort();
-            
-            // Populate dropdowns
-            document.getElementById('filterFormat').innerHTML = '<option value="">All formats</option>' + 
-                formats.map(f => `<option value="${f}">${f.replace(/_/g, ' ')}</option>`).join('');
-            
-            document.getElementById('filterAudience').innerHTML = '<option value="">All audiences</option>' + 
-                audiences.map(a => `<option value="${a}">${a}</option>`).join('');
-            
-            document.getElementById('filterTopic').innerHTML = '<option value="">All topics</option>' + 
-                topics.map(t => `<option value="${t}">${t.replace(/_/g, ' ')}</option>`).join('');
-            
-            document.getElementById('filterOutcome').innerHTML = '<option value="">All outcomes</option>' + 
-                outcomes.map(o => `<option value="${o}">${o.replace(/_/g, ' ')}</option>`).join('');
-            
-            document.getElementById('filters').style.display = 'flex';
-        }
-        
-        function applyFilters() {
-            activeFilters.format = document.getElementById('filterFormat').value;
-            activeFilters.audience = document.getElementById('filterAudience').value;
-            activeFilters.topic = document.getElementById('filterTopic').value;
-            activeFilters.priority = document.getElementById('filterPriority').value;
-            activeFilters.outcome = document.getElementById('filterOutcome').value;
-            
-            filteredIdeas = allIdeas.filter(idea => {
-                if (activeFilters.format && idea.format !== activeFilters.format) return false;
-                if (activeFilters.audience && idea.audience !== activeFilters.audience) return false;
-                if (activeFilters.topic && idea.topic !== activeFilters.topic) return false;
-                
-                if (activeFilters.priority) {
-                    if (activeFilters.priority === 'high' && idea.priority < 7) return false;
-                    if (activeFilters.priority === 'medium' && (idea.priority < 4 || idea.priority > 6)) return false;
-                    if (activeFilters.priority === 'low' && idea.priority > 3) return false;
-                }
-                
-                if (activeFilters.outcome) {
-                    const call = callData[idea.call_id];
-                    if (!call || call.outcome !== activeFilters.outcome) return false;
-                }
-                
-                return true;
-            });
-            
-            renderBoard();
-            updateStats();
-        }
-        
-        function resetFilters() {
-            document.getElementById('filterFormat').value = '';
-            document.getElementById('filterAudience').value = '';
-            document.getElementById('filterTopic').value = '';
-            document.getElementById('filterPriority').value = '';
-            document.getElementById('filterOutcome').value = '';
-            
-            activeFilters = { format: '', audience: '', topic: '', priority: '', outcome: '' };
-            filteredIdeas = allIdeas;
-            
-            renderBoard();
-            updateStats();
-        }
-
         function renderBoard() {
             const columns = {
                 ideas: { title: '💡 IDEAS', items: [] },
@@ -281,7 +118,7 @@
                 published: { title: '✅ PUBLISHED', items: [] }
             };
 
-            filteredIdeas.forEach(idea => {
+            allIdeas.forEach(idea => {
                 const status = idea.status || 'ideas';
                 if (columns[status]) columns[status].items.push(idea);
             });
@@ -289,19 +126,21 @@
             const boardHTML = Object.entries(columns).map(([key, col]) => `
                 <div class="column ${key}" data-column="${key}">
                     <h2>${col.title} (${col.items.length})</h2>
-                    ${col.items.map(item => `
-                        <div class="card ${item.priority >= 7 ? 'high-priority' : ''}" 
+                    ${col.items.map(item => {
+                        const isGenerating = item.status === 'writing' && !item.generated_content;
+                        return `
+                        <div class="card ${item.priority >= 7 ? 'high-priority' : ''} ${isGenerating ? 'generating' : ''}" 
                              data-id="${item.id}" 
-                             draggable="true"
-                             onclick="openCard('${item.id}')">
+                             draggable="true">
                             <div class="card-title">${item.title}</div>
                             <div class="card-meta">
                                 <span>${item.format}</span>
                                 <span>${item.audience}</span>
-                                ${item.priority >= 7 ? '<span style="background:#ffebee;color:#c62828">high</span>' : ''}
+                                <span>P${item.priority}</span>
+                                ${isGenerating ? '<span class="status-badge">Generating...</span>' : ''}
                             </div>
                         </div>
-                    `).join('')}
+                    `}).join('')}
                 </div>
             `).join('');
 
@@ -348,6 +187,12 @@
                         if (idea) {
                             idea.status = newStatus;
                             localStorage.setItem(`card-status-${cardId}`, newStatus);
+                            
+                            // Notify backend if moved to "writing"
+                            if (newStatus === 'writing' && !idea.generated_content) {
+                                notifyContentGeneration(idea);
+                            }
+                            
                             renderBoard();
                         }
                     }
@@ -355,259 +200,77 @@
             });
         }
 
-        function getPlatform(format) {
-            const platforms = {
-                'blog_post': 'Website Blog',
-                'faq': 'Website FAQ Section',
-                'social_media': 'Facebook, LinkedIn, Instagram',
-                'video': 'YouTube, Facebook, Instagram Reels',
-                'pricing_guides': 'Website / PDF Download',
-                'case_study': 'Website / Email / LinkedIn',
-                'email_sequence': 'Email Marketing',
-                'infographic': 'Social Media / Pinterest',
-                'how_to_guide': 'Website / YouTube'
+        async function notifyContentGeneration(idea) {
+            // POST to queue server
+            const request = {
+                id: idea.id,
+                call_id: idea.call_id,
+                title: idea.title,
+                format: idea.format,
+                topic_detail: idea.details.topic_detail,
+                hook: idea.details.hook,
+                target_audience: idea.audience,
+                priority_score: idea.priority,
+                requested_at: Date.now()
             };
-            return platforms[format] || 'Website / Social Media';
-        }
-
-        function getHookType(format, audience) {
-            const hooks = {
-                'blog_post': `<strong>Problem-Solution Hook</strong><br>Start with the customer's problem, then promise the solution.<br><br>Example: "Struggling with [problem]? Here's how to [solution]..."`,
-                'faq': `<strong>Question Hook</strong><br>Lead with the exact question customers are asking.<br><br>Example: "Can I...?" or "How do I...?" or "What happens if...?"`,
-                'social_media': `<strong>Scroll-Stopper Hook</strong><br>First 3 words must grab attention. Use numbers, emojis, or controversy.<br><br>Example: "🚨 STOP! Before you..." or "97% of people don't know..."`,
-                'video': `<strong>Pattern Interrupt Hook</strong><br>First 3 seconds must break the scroll. Use surprising visuals or statements.<br><br>Example: Visual of pile of waste → "This could cost you £200 more than it should..."`,
-                'pricing_guides': `<strong>Value Comparison Hook</strong><br>Show the cost difference immediately to grab attention.<br><br>Example: "Skip vs Man & Van: Which saves you money?" or "£280 or £326? Here's the real difference..."`,
-                'case_study': `<strong>Results-First Hook</strong><br>Lead with the impressive outcome, then explain how.<br><br>Example: "How [Company] saved £5k on waste removal in 3 months..."`,
-                'email_sequence': `<strong>Curiosity Gap Hook</strong><br>Email 1: Tease the problem. Email 2: Reveal insights. Email 3: Show solution.<br><br>Example: "You're probably overpaying for skip hire (here's why)..."`,
-                'infographic': `<strong>Visual Stat Hook</strong><br>Big number or comparison at the top.<br><br>Example: "8 Yards vs 20 Yards: The Real Cost Breakdown"`,
-                'how_to_guide': `<strong>Promise Hook</strong><br>Tell them exactly what they'll learn and the time investment.<br><br>Example: "How to [achieve result] in [time frame] (5 simple steps)"`
-            };
-            return hooks[format] || `<strong>Direct Hook</strong><br>Lead with the benefit for ${audience} customers.`;
-        }
-
-        function getCTAType(format, audience, outcome) {
-            // Adjust CTA based on call outcome
-            const isLost = outcome === 'lost';
-            const isComplaint = outcome === 'complaint';
             
-            const ctas = {
-                'blog_post': isLost 
-                    ? `<strong>Soft CTA → Comparison Tool</strong><br>"Compare skip sizes and prices for your project"<br><br><strong>Why:</strong> Customer lost due to pricing - give them tools to understand value.`
-                    : `<strong>Direct CTA → Get Quote</strong><br>"Get your free skip hire quote in 60 seconds"<br><br><strong>Why:</strong> Blog readers are researching - make booking easy.`,
+            try {
+                const response = await fetch('http://localhost:18791/queue', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(request)
+                });
+                
+                if (response.ok) {
+                    console.log('✅ Generation request queued:', idea.id);
+                } else {
+                    console.error('❌ Failed to queue request:', await response.text());
+                }
+            } catch (error) {
+                console.error('❌ Error queuing request:', error);
+            }
+        }
+
+        function startPolling() {
+            // Check for generation requests every 30 seconds
+            setInterval(checkGenerationRequests, 30000);
+            checkGenerationRequests(); // Check immediately
+        }
+
+        async function checkGenerationRequests() {
+            // Check status for all cards in "writing" state
+            const writingCards = allIdeas.filter(i => i.status === 'writing' && !i.generated_content);
+            
+            for (const card of writingCards) {
+                try {
+                    const response = await fetch(`http://localhost:18791/status/${card.id}`);
+                    const data = await response.json();
                     
-                'faq': `<strong>Educational CTA → Learn More</strong><br>"See our full guide to ${audience} skip hire"<br><br><strong>Why:</strong> FAQ readers need more info before booking.`,
-                
-                'social_media': isComplaint
-                    ? `<strong>Trust-Building CTA</strong><br>"See how we've helped 500+ ${audience} customers" + Link to reviews<br><br><strong>Why:</strong> Complaint indicates trust issues - show social proof.`
-                    : `<strong>Engagement CTA</strong><br>Ask a question: "Which option would you choose?" or "Tag someone who needs this!"<br><br><strong>Why:</strong> Social media is about conversation, not hard sells.`,
-                
-                'video': `<strong>Multi-Step CTA</strong><br>1. Like if helpful<br>2. Comment with questions<br>3. Link in bio for instant quote<br><br><strong>Why:</strong> Video viewers need multiple touch points.`,
-                
-                'pricing_guides': isLost
-                    ? `<strong>Price Match CTA</strong><br>"Found it cheaper? We'll match it + 5% off"<br><br><strong>Why:</strong> Lost to competitor on price - counter with guarantee.`
-                    : `<strong>Calculator CTA</strong><br>"Calculate your exact cost" + Interactive tool<br><br><strong>Why:</strong> Pricing content = high intent, give immediate answer.`,
-                
-                'case_study': `<strong>Similar Situation CTA</strong><br>"Got a similar project? Get your free quote"<br><br><strong>Why:</strong> Case study readers want to know if you can help them too.`,
-                
-                'email_sequence': `<strong>Progressive CTAs</strong><br>Email 1: "Reply with your biggest waste challenge"<br>Email 2: "Download our free guide"<br>Email 3: "Book your skip today - limited slots"<br><br><strong>Why:</strong> Build trust before asking for commitment.`,
-                
-                'infographic': `<strong>Share + Learn CTA</strong><br>"Share this guide" + "Get the full breakdown →"<br><br><strong>Why:</strong> Infographics are meant to be shared, then drive to website.`,
-                
-                'how_to_guide': `<strong>Implementation CTA</strong><br>"Need help with step [X]? Book a consultation"<br><br><strong>Why:</strong> Guide readers hit roadblocks - offer to do it for them.`
-            };
-            
-            return ctas[format] || `<strong>General CTA</strong><br>"Get your free quote today" or "Contact us for help"`;
-        }
-
-        function getSuggestedApproach(format, audience, insight) {
-            const approaches = {
-                'blog_post': `Write a 600-800 word blog post targeting ${audience} customers. Include practical tips, real examples, and a clear CTA. Use subheadings for scannability.`,
-                'faq': `Create a FAQ section with 5-7 common questions. Keep answers concise (2-3 sentences). Use bullet points for clarity. Include links to relevant services.`,
-                'social_media': `Create 3-5 social media posts (LinkedIn/Facebook). Mix educational content with engaging questions. Include relevant images/graphics. Use hashtags strategically.`,
-                'video': `Script a 2-3 minute video. Start with the problem, explain the solution, show examples. Include on-screen text for key points. End with clear next steps.`,
-                'pricing_guides': `Create a comparison table with 3-4 options. Show cost breakdowns, what's included, and best-use scenarios. Add a cost calculator if possible.`,
-                'case_study': `Tell a customer story: challenge → solution → results. Include real numbers/metrics. Add customer quotes. Keep it under 500 words with images.`,
-                'email_sequence': `Write 3-email sequence: 1) Problem awareness, 2) Solution education, 3) Clear CTA. Space emails 2-3 days apart. Personalize based on customer type.`,
-                'infographic': `Visual comparison layout. Use icons and minimal text (under 50 words total). Highlight 3-5 key data points. Make it shareable on social media.`,
-                'how_to_guide': `Step-by-step guide with 5-7 clear steps. Include photos/diagrams for each step. Add "common mistakes" section. Provide downloadable checklist.`
-            };
-            
-            let approach = approaches[format] || `Create ${format} content for ${audience} customers. Focus on solving their specific problem with clear, actionable advice.`;
-            
-            if (insight && insight.impact === 'high') {
-                approach += ` <strong>Priority:</strong> This addresses a high-impact issue (${insight.category?.replace(/_/g, ' ')}).`;
+                    if (data.status === 'complete' && data.content) {
+                        console.log(`✅ Content generated for: ${card.title}`);
+                        card.generated_content = data.content;
+                        card.status = 'review';
+                        localStorage.setItem(`card-status-${card.id}`, 'review');
+                        localStorage.setItem(`card-content-${card.id}`, data.content);
+                    }
+                } catch (error) {
+                    // Queue server might not be running or content not ready yet
+                }
             }
             
-            return approach;
-        }
-
-        function openCard(id) {
-            const idea = allIdeas.find(i => i.id === id);
-            if (!idea) return;
-
-            const call = callData[idea.call_id];
-            
-            // Parse pain points and product insights
-            let painPoints = [];
-            let productInsights = [];
-            try {
-                painPoints = typeof call.pain_points === 'string' 
-                    ? JSON.parse(call.pain_points) 
-                    : call.pain_points || [];
-                productInsights = typeof call.product_insights === 'string'
-                    ? JSON.parse(call.product_insights)
-                    : call.product_insights || [];
-            } catch (e) {}
-
-            // Get relevant pain point (if it matches the topic)
-            const relevantPain = painPoints.find(p => 
-                p.category === idea.topic || 
-                p.description?.toLowerCase().includes(idea.topic)
-            ) || painPoints[0];
-
-            // Get relevant insight
-            const relevantInsight = productInsights.find(i =>
-                i.category === idea.topic ||
-                i.insight?.toLowerCase().includes(idea.topic)
-            ) || productInsights[0];
-
-            // Build context from available data
-            const contextParts = [];
-            if (call.customer_type) contextParts.push(`Customer Type: ${call.customer_type}`);
-            if (call.from_number) contextParts.push(`From: ${call.from_number}`);
-            if (call.call_date) contextParts.push(`Date: ${new Date(call.call_date).toLocaleDateString()}`);
-            
-            const transcriptPreview = contextParts.length > 0 
-                ? contextParts.join(' • ') + '\n\nFull transcript not stored in database.'
-                : 'Limited call data available';
-
-            // Generate hook and CTA based on format and audience
-            const hookType = getHookType(idea.format, idea.audience);
-            const ctaType = getCTAType(idea.format, idea.audience, call.outcome);
-            
-            document.getElementById('modalTitle').textContent = idea.title;
-            document.getElementById('modalBody').innerHTML = `
-                <div class="info-grid">
-                    <div class="info-item">
-                        <label>Format</label>
-                        <span>${idea.format.replace(/_/g, ' ')}</span>
-                    </div>
-                    <div class="info-item">
-                        <label>Audience</label>
-                        <span>${idea.audience}</span>
-                    </div>
-                    <div class="info-item">
-                        <label>Platform</label>
-                        <span>${getPlatform(idea.format)}</span>
-                    </div>
-                    <div class="info-item">
-                        <label>Priority</label>
-                        <span>${idea.priority}/10</span>
-                    </div>
-                    <div class="info-item">
-                        <label>Customer Segment</label>
-                        <span>${call.customer_segment || 'unknown'}</span>
-                    </div>
-                    <div class="info-item">
-                        <label>Call Outcome</label>
-                        <span>${call.outcome || 'unknown'}</span>
-                    </div>
-                </div>
-                
-                <div class="section" style="margin-top:20px;">
-                    <h3>🎣 HOOK TYPE</h3>
-                    <div class="context-box">
-                        ${hookType}
-                    </div>
-                </div>
-                
-                <div class="section">
-                    <h3>🎯 CTA TYPE</h3>
-                    <div class="context-box">
-                        ${ctaType}
-                    </div>
-                </div>
-
-                ${relevantPain && relevantPain.direct_quote ? `
-                    <div class="section">
-                        <h3>💬 Customer Quote</h3>
-                        <div class="quote-box">
-                            "${relevantPain.direct_quote}"
-                        </div>
-                    </div>
-                ` : ''}
-
-                ${relevantPain ? `
-                    <div class="section">
-                        <h3>😤 Customer Pain Point</h3>
-                        <div class="pain-box">
-                            <strong>${relevantPain.category.replace(/_/g, ' ')} (${relevantPain.severity})</strong>
-                            ${relevantPain.description}
-                        </div>
-                    </div>
-                ` : ''}
-
-                <div class="section">
-                    <h3>📝 Content Brief</h3>
-                    <div class="context-box">
-                        <strong style="display:block; margin-bottom:10px; color:#1976d2;">What to Create:</strong>
-                        ${idea.details?.topic_detail || 'General content about ' + idea.topic}
-                        
-                        <strong style="display:block; margin-top:15px; margin-bottom:10px; color:#1976d2;">Why It Matters:</strong>
-                        ${relevantPain 
-                            ? `Customers are experiencing: ${relevantPain.description} (${relevantPain.severity} severity)`
-                            : `Addresses ${idea.topic.replace(/_/g, ' ')} questions from ${idea.audience} customers`
-                        }
-                        
-                        <strong style="display:block; margin-top:15px; margin-bottom:10px; color:#1976d2;">Suggested Approach:</strong>
-                        ${getSuggestedApproach(idea.format, idea.audience, relevantInsight)}
-                        
-                        ${idea.details?.hook ? `
-                            <strong style="display:block; margin-top:15px; margin-bottom:10px; color:#1976d2;">Hook/Headline:</strong>
-                            ${idea.details.hook}
-                        ` : ''}
-                    </div>
-                </div>
-
-                ${relevantInsight ? `
-                    <div class="section">
-                        <h3>💡 Business Insight</h3>
-                        <div class="insight-box">
-                            <strong>${relevantInsight.category?.replace(/_/g, ' ')} (${relevantInsight.impact} impact)</strong>
-                            ${relevantInsight.insight}
-                        </div>
-                    </div>
-                ` : ''}
-
-                <div class="section">
-                    <h3>📞 Call Context</h3>
-                    <div class="context-box">
-                        ${transcriptPreview}
-                    </div>
-                </div>
-            `;
-            document.getElementById('modal').classList.add('active');
-        }
-
-        function closeModal() {
-            document.getElementById('modal').classList.remove('active');
+            if (writingCards.length > 0) {
+                renderBoard();
+            }
         }
 
         function updateStats() {
-            const total = filteredIdeas.length;
-            const totalAll = allIdeas.length;
-            const highPriority = filteredIdeas.filter(i => i.priority >= 7).length;
-            const formats = [...new Set(filteredIdeas.map(i => i.format))].length;
+            const total = allIdeas.length;
+            const writing = allIdeas.filter(i => i.status === 'writing').length;
+            const review = allIdeas.filter(i => i.status === 'review').length;
             
-            const filterActive = filteredIdeas.length !== allIdeas.length;
-            document.getElementById('stats').textContent = filterActive
-                ? `Showing ${total} of ${totalAll} ideas • ${highPriority} high priority • ${formats} formats`
-                : `${total} content ideas • ${highPriority} high priority • ${formats} formats`;
+            document.getElementById('stats').textContent = 
+                `${total} content ideas • ${writing} in progress • ${review} awaiting review`;
         }
-
-        document.getElementById('modal').addEventListener('click', e => {
-            if (e.target.id === 'modal') closeModal();
-        });
 
         loadContentIdeas();
     </script>
