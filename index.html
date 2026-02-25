@@ -124,13 +124,16 @@
                         angles.forEach((angle, idx) => {
                             const ideaId = `${call.call_id}-${idx}`;
                             const hasGeneratedContent = generatedContent[ideaId];
-                            // Prioritize Supabase data over localStorage
-                            let savedStatus = localStorage.getItem(`card-status-${ideaId}`) || 'ideas';
-                            if (hasGeneratedContent && savedStatus === 'ideas') {
-                                savedStatus = 'review';
-                                localStorage.setItem(`card-status-${ideaId}`, 'review'); // Update localStorage
-                            }
                             const content = hasGeneratedContent || localStorage.getItem(`card-content-${ideaId}`);
+                            
+                            // Determine status: if content exists, force to review
+                            let savedStatus;
+                            if (hasGeneratedContent) {
+                                savedStatus = 'review';
+                                localStorage.setItem(`card-status-${ideaId}`, 'review');
+                            } else {
+                                savedStatus = localStorage.getItem(`card-status-${ideaId}`) || 'ideas';
+                            }
                             
                             // Get relevant pain point and insight
                             const painPoint = painPoints[0] || null;
