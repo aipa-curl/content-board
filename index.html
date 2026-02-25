@@ -32,6 +32,18 @@
         .card-meta .status-badge { background: #2196f3; color: white; font-weight: 600; }
         .loading { text-align: center; padding: 40px; color: #888; }
         .error { text-align: center; padding: 40px; color: #f44336; background: #ffebee; border-radius: 8px; margin: 20px; }
+        .modal { display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); z-index: 1000; padding: 20px; overflow-y: auto; }
+        .modal.active { display: flex; align-items: flex-start; justify-content: center; padding-top: 40px; }
+        .modal-content { background: #fff; border-radius: 16px; max-width: 800px; width: 100%; max-height: 90vh; overflow-y: auto; }
+        .modal-header { background: #333; color: #fff; padding: 20px; display: flex; justify-content: space-between; align-items: center; border-radius: 16px 16px 0 0; }
+        .modal-header h2 { font-size: 18px; line-height: 1.4; }
+        .close-btn { background: none; border: none; color: #fff; font-size: 28px; cursor: pointer; line-height: 1; padding: 0; margin-left: 15px; flex-shrink: 0; }
+        .modal-body { padding: 20px; }
+        .info-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-bottom: 20px; }
+        .info-item { background: #f5f5f5; padding: 10px; border-radius: 8px; }
+        .info-item label { display: block; font-size: 10px; color: #888; margin-bottom: 3px; text-transform: uppercase; font-weight: 600; }
+        .info-item span { font-size: 13px; color: #333; }
+        @media (max-width: 600px) { .info-grid { grid-template-columns: 1fr; } }
     </style>
 </head>
 <body>
@@ -45,6 +57,18 @@
     
     <div class="board" id="board">
         <div class="loading">Loading content ideas...</div>
+    </div>
+
+    <div class="modal" id="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 id="modalTitle">Content Details</h2>
+                <button class="close-btn" onclick="closeModal()">&times;</button>
+            </div>
+            <div class="modal-body" id="modalBody">
+                Loading...
+            </div>
+        </div>
     </div>
 
     <script>
@@ -156,9 +180,17 @@
             const columns = document.querySelectorAll('.column');
             let touchStartY = 0;
             let touchStartX = 0;
+            let touchMoved = false;
 
             cards.forEach(card => {
-                // Mouse events (desktop)
+                // Desktop click to open
+                card.addEventListener('click', e => {
+                    if (!draggedCard) { // Only open if not dragging
+                        openCard(card.dataset.id);
+                    }
+                });
+
+                // Mouse events (desktop drag)
                 card.addEventListener('dragstart', e => {
                     draggedCard = card;
                     card.classList.add('dragging');
@@ -172,25 +204,41 @@
 
                 // Touch events (mobile)
                 card.addEventListener('touchstart', e => {
-                    draggedCard = card;
-                    card.classList.add('dragging');
                     touchStartY = e.touches[0].clientY;
                     touchStartX = e.touches[0].clientX;
+                    touchMoved = false;
+                    draggedCard = card;
+                    
+                    // Delay adding dragging class to distinguish tap from drag
+                    setTimeout(() => {
+                        if (draggedCard === card) {
+                            card.classList.add('dragging');
+                        }
+                    }, 150);
                 }, { passive: true });
 
                 card.addEventListener('touchmove', e => {
                     if (!draggedCard) return;
                     
                     const touch = e.touches[0];
-                    const elementAtPoint = document.elementFromPoint(touch.clientX, touch.clientY);
-                    const targetColumn = elementAtPoint?.closest('.column');
+                    const deltaX = Math.abs(touch.clientX - touchStartX);
+                    const deltaY = Math.abs(touch.clientY - touchStartY);
                     
-                    // Remove drag-over from all columns
-                    columns.forEach(col => col.classList.remove('drag-over'));
-                    
-                    // Add to current column
-                    if (targetColumn) {
-                        targetColumn.classList.add('drag-over');
+                    // If moved more than 10px, it's a drag
+                    if (deltaX > 10 || deltaY > 10) {
+                        touchMoved = true;
+                        card.classList.add('dragging');
+                        
+                        const elementAtPoint = document.elementFromPoint(touch.clientX, touch.clientY);
+                        const targetColumn = elementAtPoint?.closest('.column');
+                        
+                        // Remove drag-over from all columns
+                        columns.forEach(col => col.classList.remove('drag-over'));
+                        
+                        // Add to current column
+                        if (targetColumn) {
+                            targetColumn.classList.add('drag-over');
+                        }
                     }
                 }, { passive: true });
 
@@ -198,31 +246,41 @@
                     if (!draggedCard) return;
                     
                     const touch = e.changedTouches[0];
-                    const elementAtPoint = document.elementFromPoint(touch.clientX, touch.clientY);
-                    const targetColumn = elementAtPoint?.closest('.column');
+                    const deltaX = Math.abs(touch.clientX - touchStartX);
+                    const deltaY = Math.abs(touch.clientY - touchStartY);
                     
-                    if (targetColumn && draggedCard) {
-                        const cardId = draggedCard.dataset.id;
-                        const newStatus = targetColumn.dataset.column;
+                    // If didn't move much (< 10px), it's a tap - open the card
+                    if (!touchMoved && deltaX < 10 && deltaY < 10) {
+                        openCard(card.dataset.id);
+                    } else {
+                        // It's a drag - process the move
+                        const elementAtPoint = document.elementFromPoint(touch.clientX, touch.clientY);
+                        const targetColumn = elementAtPoint?.closest('.column');
                         
-                        const idea = allIdeas.find(i => i.id === cardId);
-                        if (idea) {
-                            idea.status = newStatus;
-                            localStorage.setItem(`card-status-${cardId}`, newStatus);
+                        if (targetColumn && draggedCard) {
+                            const cardId = draggedCard.dataset.id;
+                            const newStatus = targetColumn.dataset.column;
                             
-                            // Notify backend if moved to "writing"
-                            if (newStatus === 'writing' && !idea.generated_content) {
-                                notifyContentGeneration(idea);
+                            const idea = allIdeas.find(i => i.id === cardId);
+                            if (idea) {
+                                idea.status = newStatus;
+                                localStorage.setItem(`card-status-${cardId}`, newStatus);
+                                
+                                // Notify backend if moved to "writing"
+                                if (newStatus === 'writing' && !idea.generated_content) {
+                                    notifyContentGeneration(idea);
+                                }
+                                
+                                renderBoard();
                             }
-                            
-                            renderBoard();
                         }
                     }
                     
                     // Cleanup
-                    draggedCard.classList.remove('dragging');
+                    card.classList.remove('dragging');
                     columns.forEach(col => col.classList.remove('drag-over'));
                     draggedCard = null;
+                    touchMoved = false;
                 }, { passive: true });
             });
 
@@ -384,6 +442,76 @@
                 alert(`✅ Copied to clipboard! Paste in WhatsApp.`);
             }
         }
+
+        function openCard(id) {
+            const idea = allIdeas.find(i => i.id === id);
+            if (!idea) return;
+
+            document.getElementById('modalTitle').textContent = idea.title;
+            document.getElementById('modalBody').innerHTML = `
+                <div class="info-grid">
+                    <div class="info-item">
+                        <label>Format</label>
+                        <span>${idea.format.replace(/_/g, ' ')}</span>
+                    </div>
+                    <div class="info-item">
+                        <label>Audience</label>
+                        <span>${idea.audience}</span>
+                    </div>
+                    <div class="info-item">
+                        <label>Priority</label>
+                        <span>${idea.priority}/10</span>
+                    </div>
+                    <div class="info-item">
+                        <label>Status</label>
+                        <span>${idea.status}</span>
+                    </div>
+                    <div class="info-item">
+                        <label>Topic</label>
+                        <span>${idea.topic.replace(/_/g, ' ')}</span>
+                    </div>
+                    <div class="info-item">
+                        <label>Call ID</label>
+                        <span>${idea.call_id.substring(0, 20)}...</span>
+                    </div>
+                </div>
+                
+                <div style="margin-top:20px;">
+                    <h3 style="font-size:12px;text-transform:uppercase;color:#888;margin-bottom:10px;">Hook</h3>
+                    <div style="background:#f5f5f5;padding:15px;border-radius:8px;line-height:1.6;">
+                        ${idea.details.hook || 'No hook available'}
+                    </div>
+                </div>
+                
+                ${idea.details.topic_detail ? `
+                    <div style="margin-top:20px;">
+                        <h3 style="font-size:12px;text-transform:uppercase;color:#888;margin-bottom:10px;">Topic Detail</h3>
+                        <div style="background:#f5f5f5;padding:15px;border-radius:8px;line-height:1.6;">
+                            ${idea.details.topic_detail}
+                        </div>
+                    </div>
+                ` : ''}
+                
+                ${idea.generated_content ? `
+                    <div style="margin-top:20px;">
+                        <h3 style="font-size:12px;text-transform:uppercase;color:#888;margin-bottom:10px;">Generated Content</h3>
+                        <div style="background:#e8f5e9;padding:15px;border-radius:8px;line-height:1.6;max-height:400px;overflow-y:auto;">
+                            <pre style="white-space:pre-wrap;font-family:inherit;margin:0;">${idea.generated_content}</pre>
+                        </div>
+                    </div>
+                ` : ''}
+            `;
+            document.getElementById('modal').classList.add('active');
+        }
+
+        function closeModal() {
+            document.getElementById('modal').classList.remove('active');
+        }
+
+        // Close modal when clicking outside
+        document.getElementById('modal').addEventListener('click', e => {
+            if (e.target.id === 'modal') closeModal();
+        });
 
         loadContentIdeas();
     </script>
