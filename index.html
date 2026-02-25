@@ -20,8 +20,8 @@
         .column.review h2 { border-color: #ff9800; }
         .column.scheduled h2 { border-color: #9c27b0; }
         .column.published h2 { border-color: #4caf50; }
-        .card { background: #fafafa; border-radius: 8px; padding: 12px; margin-bottom: 10px; cursor: move; border-left: 3px solid #ddd; transition: all 0.2s; }
-        .card:hover { transform: translateY(-2px); box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
+        .card { background: #fafafa; border-radius: 8px; padding: 12px; margin-bottom: 10px; cursor: pointer; border-left: 3px solid #ddd; transition: all 0.2s; }
+        .card:hover { transform: translateY(-2px); box-shadow: 0 4px 12px rgba(0,0,0,0.1); background: #fff; }
         .card.dragging { opacity: 0.5; }
         .card.high-priority { border-left-color: #f44336; }
         .card.generating { border-left-color: #2196f3; animation: pulse 2s infinite; }
@@ -32,6 +32,16 @@
         .card-meta .status-badge { background: #2196f3; color: white; font-weight: 600; }
         .loading { text-align: center; padding: 40px; color: #888; }
         .error { text-align: center; padding: 40px; color: #f44336; background: #ffebee; border-radius: 8px; margin: 20px; }
+        .modal { display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); z-index: 1000; padding: 20px; overflow-y: auto; }
+        .modal.active { display: flex; align-items: flex-start; justify-content: center; padding-top: 40px; }
+        .modal-content { background: #fff; border-radius: 16px; max-width: 800px; width: 100%; max-height: 90vh; overflow-y: auto; }
+        .modal-header { background: #333; color: #fff; padding: 20px; display: flex; justify-content: space-between; align-items: center; border-radius: 16px 16px 0 0; }
+        .modal-header h2 { font-size: 18px; line-height: 1.4; }
+        .close-btn { background: none; border: none; color: #fff; font-size: 28px; cursor: pointer; line-height: 1; padding: 0; margin-left: 15px; }
+        .modal-body { padding: 20px; }
+        .detail-section { margin-bottom: 20px; }
+        .detail-label { font-size: 12px; text-transform: uppercase; color: #888; font-weight: 600; margin-bottom: 5px; }
+        .detail-value { font-size: 14px; color: #333; line-height: 1.6; }
     </style>
 </head>
 <body>
@@ -42,6 +52,18 @@
     
     <div class="board" id="board">
         <div class="loading">Loading content ideas...</div>
+    </div>
+
+    <div class="modal" id="modal" onclick="if(event.target.id==='modal') closeModal()">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 id="modalTitle">Content Details</h2>
+                <button class="close-btn" onclick="closeModal()">&times;</button>
+            </div>
+            <div class="modal-body" id="modalBody">
+                Loading...
+            </div>
+        </div>
     </div>
 
     <script>
@@ -131,7 +153,8 @@
                         return `
                         <div class="card ${item.priority >= 7 ? 'high-priority' : ''} ${isGenerating ? 'generating' : ''}" 
                              data-id="${item.id}" 
-                             draggable="true">
+                             draggable="true"
+                             onclick="openCard('${item.id}')">
                             <div class="card-title">${item.title}</div>
                             <div class="card-meta">
                                 <span>${item.format}</span>
@@ -270,6 +293,63 @@
             
             document.getElementById('stats').textContent = 
                 `${total} content ideas • ${writing} in progress • ${review} awaiting review`;
+        }
+
+        function openCard(id) {
+            const idea = allIdeas.find(i => i.id === id);
+            if (!idea) return;
+
+            document.getElementById('modalTitle').textContent = idea.title;
+            document.getElementById('modalBody').innerHTML = `
+                <div class="detail-section">
+                    <div class="detail-label">Hook</div>
+                    <div class="detail-value">${idea.details.hook || idea.title}</div>
+                </div>
+                
+                ${idea.details.topic_detail ? `
+                <div class="detail-section">
+                    <div class="detail-label">Topic Detail</div>
+                    <div class="detail-value">${idea.details.topic_detail}</div>
+                </div>
+                ` : ''}
+                
+                ${idea.details.topic_category ? `
+                <div class="detail-section">
+                    <div class="detail-label">Topic Category</div>
+                    <div class="detail-value">${idea.details.topic_category.replace(/_/g, ' ')}</div>
+                </div>
+                ` : ''}
+                
+                <div class="detail-section">
+                    <div class="detail-label">Format</div>
+                    <div class="detail-value">${idea.format.replace(/_/g, ' ')}</div>
+                </div>
+                
+                <div class="detail-section">
+                    <div class="detail-label">Target Audience</div>
+                    <div class="detail-value">${idea.audience.replace(/_/g, ' ')}</div>
+                </div>
+                
+                <div class="detail-section">
+                    <div class="detail-label">Priority Score</div>
+                    <div class="detail-value">${idea.priority}/10</div>
+                </div>
+                
+                <div class="detail-section">
+                    <div class="detail-label">Status</div>
+                    <div class="detail-value">${idea.status.toUpperCase()}</div>
+                </div>
+                
+                <div class="detail-section">
+                    <div class="detail-label">Call ID</div>
+                    <div class="detail-value" style="font-size:11px;color:#888;">${idea.call_id}</div>
+                </div>
+            `;
+            document.getElementById('modal').classList.add('active');
+        }
+
+        function closeModal() {
+            document.getElementById('modal').classList.remove('active');
         }
 
         loadContentIdeas();
