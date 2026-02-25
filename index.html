@@ -110,11 +110,23 @@
                             ? JSON.parse(call.content_angles)
                             : call.content_angles || [];
                         
+                        // Parse pain points and insights
+                        const painPoints = typeof call.pain_points === 'string' 
+                            ? JSON.parse(call.pain_points) 
+                            : call.pain_points || [];
+                        const productInsights = typeof call.product_insights === 'string'
+                            ? JSON.parse(call.product_insights)
+                            : call.product_insights || [];
+                        
                         angles.forEach((angle, idx) => {
                             const ideaId = `${call.call_id}-${idx}`;
                             const hasGeneratedContent = generatedContent[ideaId];
                             const savedStatus = localStorage.getItem(`card-status-${ideaId}`) || (hasGeneratedContent ? 'review' : 'ideas');
                             const content = hasGeneratedContent || localStorage.getItem(`card-content-${ideaId}`);
+                            
+                            // Get relevant pain point and insight
+                            const painPoint = painPoints[0] || null;
+                            const insight = productInsights[0] || null;
                             
                             allIdeas.push({
                                 id: ideaId,
@@ -127,7 +139,11 @@
                                 priority: call.priority_score || 5,
                                 status: savedStatus,
                                 generated_content: content,
-                                details: angle
+                                details: angle,
+                                painPoint: painPoint,
+                                insight: insight,
+                                sentiment: call.sentiment,
+                                outcome: call.outcome
                             });
                         });
                     } catch (e) {}
@@ -317,8 +333,40 @@
 
             document.getElementById('modalTitle').textContent = idea.title;
             document.getElementById('modalBody').innerHTML = `
+                <div style="margin-bottom:20px;padding:15px;background:#f5f5f5;border-radius:8px;">
+                    <div class="detail-label">Move to Column</div>
+                    <select id="statusSelect" onchange="changeCardStatus('${idea.id}')" style="width:100%;padding:10px;border:1px solid #ddd;border-radius:6px;font-size:14px;background:white;cursor:pointer;margin-top:5px;">
+                        <option value="ideas" ${idea.status === 'ideas' ? 'selected' : ''}>💡 IDEAS</option>
+                        <option value="writing" ${idea.status === 'writing' ? 'selected' : ''}>✍️ WRITING</option>
+                        <option value="review" ${idea.status === 'review' ? 'selected' : ''}>👀 REVIEW</option>
+                        <option value="scheduled" ${idea.status === 'scheduled' ? 'selected' : ''}>📅 SCHEDULED</option>
+                        <option value="published" ${idea.status === 'published' ? 'selected' : ''}>✅ PUBLISHED</option>
+                    </select>
+                </div>
+                
+                ${idea.painPoint?.direct_quote ? `
+                <div class="detail-section" style="background:#fff3cd;padding:12px;border-radius:8px;border-left:4px solid #ffc107;">
+                    <div class="detail-label">💬 Customer Quote</div>
+                    <div class="detail-value" style="font-style:italic;">"${idea.painPoint.direct_quote}"</div>
+                </div>
+                ` : ''}
+                
+                ${idea.painPoint?.description ? `
+                <div class="detail-section" style="background:#ffebee;padding:12px;border-radius:8px;border-left:4px solid #f44336;">
+                    <div class="detail-label">😤 Pain Point ${idea.painPoint.severity ? `(${idea.painPoint.severity} severity)` : ''}</div>
+                    <div class="detail-value">${idea.painPoint.description}</div>
+                </div>
+                ` : ''}
+                
+                ${idea.insight?.insight ? `
+                <div class="detail-section" style="background:#e3f2fd;padding:12px;border-radius:8px;border-left:4px solid #2196f3;">
+                    <div class="detail-label">📊 Business Insight ${idea.insight.impact ? `(${idea.insight.impact} impact)` : ''}</div>
+                    <div class="detail-value">${idea.insight.insight}</div>
+                </div>
+                ` : ''}
+                
                 <div class="detail-section">
-                    <div class="detail-label">Hook</div>
+                    <div class="detail-label">💡 Content Angle</div>
                     <div class="detail-value">${idea.details.hook || idea.title}</div>
                 </div>
                 
@@ -329,36 +377,40 @@
                 </div>
                 ` : ''}
                 
-                ${idea.details.topic_category ? `
-                <div class="detail-section">
-                    <div class="detail-label">Topic Category</div>
-                    <div class="detail-value">${idea.details.topic_category.replace(/_/g, ' ')}</div>
-                </div>
-                ` : ''}
-                
-                <div class="detail-section">
-                    <div class="detail-label">Format</div>
-                    <div class="detail-value">${idea.format.replace(/_/g, ' ')}</div>
-                </div>
-                
-                <div class="detail-section">
-                    <div class="detail-label">Target Audience</div>
-                    <div class="detail-value">${idea.audience.replace(/_/g, ' ')}</div>
-                </div>
-                
-                <div class="detail-section">
-                    <div class="detail-label">Priority Score</div>
-                    <div class="detail-value">${idea.priority}/10</div>
-                </div>
-                
-                <div class="detail-section">
-                    <div class="detail-label">Status</div>
-                    <div class="detail-value">${idea.status.toUpperCase()}</div>
-                </div>
-                
-                <div class="detail-section">
-                    <div class="detail-label">Call ID</div>
-                    <div class="detail-value" style="font-size:11px;color:#888;">${idea.call_id}</div>
+                <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:15px;">
+                    <div class="detail-section">
+                        <div class="detail-label">Format</div>
+                        <div class="detail-value">${idea.format.replace(/_/g, ' ')}</div>
+                    </div>
+                    
+                    <div class="detail-section">
+                        <div class="detail-label">Audience</div>
+                        <div class="detail-value">${idea.audience.replace(/_/g, ' ')}</div>
+                    </div>
+                    
+                    <div class="detail-section">
+                        <div class="detail-label">Priority</div>
+                        <div class="detail-value">${idea.priority}/10</div>
+                    </div>
+                    
+                    <div class="detail-section">
+                        <div class="detail-label">Status</div>
+                        <div class="detail-value">${idea.status.toUpperCase()}</div>
+                    </div>
+                    
+                    ${idea.sentiment ? `
+                    <div class="detail-section">
+                        <div class="detail-label">Sentiment</div>
+                        <div class="detail-value">${idea.sentiment}</div>
+                    </div>
+                    ` : ''}
+                    
+                    ${idea.outcome ? `
+                    <div class="detail-section">
+                        <div class="detail-label">Call Outcome</div>
+                        <div class="detail-value">${idea.outcome.replace(/_/g, ' ')}</div>
+                    </div>
+                    ` : ''}
                 </div>
                 
                 ${idea.generated_content ? `
@@ -369,6 +421,25 @@
                 ` : ''}
             `;
             document.getElementById('modal').classList.add('active');
+        }
+
+        function changeCardStatus(cardId) {
+            const newStatus = document.getElementById('statusSelect').value;
+            const idea = allIdeas.find(i => i.id === cardId);
+            
+            if (idea) {
+                idea.status = newStatus;
+                localStorage.setItem(`card-status-${cardId}`, newStatus);
+                
+                // Notify backend if moved to "writing"
+                if (newStatus === 'writing' && !idea.generated_content) {
+                    notifyContentGeneration(idea);
+                }
+                
+                closeModal();
+                renderBoard();
+                updateStats();
+            }
         }
 
         function closeModal() {
