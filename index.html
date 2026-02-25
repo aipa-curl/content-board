@@ -449,6 +449,17 @@
 
             document.getElementById('modalTitle').textContent = idea.title;
             document.getElementById('modalBody').innerHTML = `
+                <div style="margin-bottom:20px;padding:15px;background:#f5f5f5;border-radius:8px;">
+                    <label style="display:block;font-size:12px;text-transform:uppercase;color:#888;margin-bottom:8px;font-weight:600;">Move to Column</label>
+                    <select id="statusSelect" onchange="changeCardStatus('${idea.id}')" style="width:100%;padding:10px;border:1px solid #ddd;border-radius:6px;font-size:14px;background:white;cursor:pointer;">
+                        <option value="ideas" ${idea.status === 'ideas' ? 'selected' : ''}>💡 IDEAS</option>
+                        <option value="writing" ${idea.status === 'writing' ? 'selected' : ''}>✍️ WRITING</option>
+                        <option value="review" ${idea.status === 'review' ? 'selected' : ''}>👀 REVIEW</option>
+                        <option value="scheduled" ${idea.status === 'scheduled' ? 'selected' : ''}>📅 SCHEDULED</option>
+                        <option value="published" ${idea.status === 'published' ? 'selected' : ''}>✅ PUBLISHED</option>
+                    </select>
+                </div>
+                
                 <div class="info-grid">
                     <div class="info-item">
                         <label>Format</label>
@@ -463,16 +474,16 @@
                         <span>${idea.priority}/10</span>
                     </div>
                     <div class="info-item">
-                        <label>Status</label>
-                        <span>${idea.status}</span>
-                    </div>
-                    <div class="info-item">
                         <label>Topic</label>
                         <span>${idea.topic.replace(/_/g, ' ')}</span>
                     </div>
                     <div class="info-item">
                         <label>Call ID</label>
                         <span>${idea.call_id.substring(0, 20)}...</span>
+                    </div>
+                    <div class="info-item">
+                        <label>Index</label>
+                        <span>${idea.index}</span>
                     </div>
                 </div>
                 
@@ -506,6 +517,35 @@
 
         function closeModal() {
             document.getElementById('modal').classList.remove('active');
+        }
+
+        function changeCardStatus(cardId) {
+            const newStatus = document.getElementById('statusSelect').value;
+            const idea = allIdeas.find(i => i.id === cardId);
+            
+            if (idea) {
+                idea.status = newStatus;
+                localStorage.setItem(`card-status-${cardId}`, newStatus);
+                
+                // Notify backend if moved to "writing"
+                if (newStatus === 'writing' && !idea.generated_content) {
+                    notifyContentGeneration(idea);
+                }
+                
+                closeModal();
+                renderBoard();
+                
+                // Show confirmation
+                const statusNames = {
+                    'ideas': '💡 IDEAS',
+                    'writing': '✍️ WRITING',
+                    'review': '👀 REVIEW',
+                    'scheduled': '📅 SCHEDULED',
+                    'published': '✅ PUBLISHED'
+                };
+                
+                alert(`✅ Moved to ${statusNames[newStatus]}`);
+            }
         }
 
         // Close modal when clicking outside
