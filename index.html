@@ -50,9 +50,7 @@
     <div class="header">
         <h1>📋 Content Board</h1>
         <div class="stats" id="stats">Loading...</div>
-        <button onclick="triggerContentGeneration()" style="margin-top:10px;padding:10px 20px;background:#2196f3;color:white;border:none;border-radius:6px;cursor:pointer;font-weight:600;">
-            🚀 Generate Content for Writing Queue
-        </button>
+        <p style="margin-top:10px;font-size:13px;color:#666;">Drag cards to WRITING to queue content generation automatically</p>
     </div>
     
     <div class="board" id="board">
@@ -331,42 +329,36 @@
                 hook: idea.details.hook,
                 target_audience: idea.audience,
                 priority_score: idea.priority,
-                status: 'pending',
-                requested_at: new Date().toISOString()
+                status: 'pending'
             };
             
             try {
-                // Store in localStorage as backup
-                localStorage.setItem(`gen-queue-${idea.id}`, JSON.stringify(request));
-                
-                // Also try to write to a simple tracking endpoint (logs only, no DB needed)
-                const trackRequest = {
-                    event: 'content_generation_requested',
-                    card_id: idea.id,
-                    title: idea.title,
-                    timestamp: new Date().toISOString()
-                };
-                
-                // Write to public queue endpoint (JSONBin.io)
-                fetch('https://api.jsonbin.io/v3/b/67bf8a5dacd3cb34a8cd0f2e', {
-                    method: 'PUT',
+                const response = await fetch(`${SUPABASE_URL}/rest/v1/content_generation_queue`, {
+                    method: 'POST',
                     headers: {
+                        'apikey': SUPABASE_KEY,
+                        'Authorization': `Bearer ${SUPABASE_KEY}`,
                         'Content-Type': 'application/json',
-                        'X-Master-Key': '$2a$10$8YvV7qKZE0cQxH3VqxPYNOxKvU9mXGFJ7hF0YX9zQq1cMwEuNfKbm'
+                        'Prefer': 'return=representation'
                     },
-                    body: JSON.stringify({
-                        requests: [request],
-                        updated_at: new Date().toISOString()
-                    })
-                }).then(() => {
-                    console.log('✅ Queue synced to public endpoint');
-                }).catch(e => {
-                    console.log('Queue saved to localStorage only');
+                    body: JSON.stringify(request)
                 });
                 
-                console.log('✅ Generation request queued:', idea.id);
+                if (response.ok) {
+                    console.log('✅ Content generation queued:', idea.title);
+                    // Show brief confirmation
+                    const msg = document.createElement('div');
+                    msg.textContent = '✅ Content queued for generation';
+                    msg.style.cssText = 'position:fixed;top:20px;right:20px;background:#4caf50;color:white;padding:15px 20px;border-radius:8px;z-index:9999;font-weight:600;';
+                    document.body.appendChild(msg);
+                    setTimeout(() => msg.remove(), 3000);
+                } else {
+                    console.error('❌ Failed to queue:', await response.text());
+                    alert('❌ Failed to queue content. Check console for details.');
+                }
             } catch (error) {
-                console.error('❌ Error queuing request:', error);
+                console.error('❌ Error queuing:', error);
+                alert('❌ Error queuing content: ' + error.message);
             }
         }
 
