@@ -153,13 +153,17 @@
                     <h2>${col.title} (${col.items.length})</h2>
                     ${col.items.map(item => {
                         const isGenerating = item.status === 'writing' && !item.generated_content;
+                        const topicPreview = item.details.topic_detail 
+                            ? item.details.topic_detail.substring(0, 80) + (item.details.topic_detail.length > 80 ? '...' : '')
+                            : '';
                         return `
                         <div class="card ${item.priority >= 7 ? 'high-priority' : ''} ${isGenerating ? 'generating' : ''}" 
                              data-id="${item.id}" 
                              draggable="true">
                             <div class="card-title">${item.title}</div>
+                            ${topicPreview ? `<div style="font-size:12px;color:#666;margin:8px 0;line-height:1.4;">${topicPreview}</div>` : ''}
                             <div class="card-meta">
-                                <span>${item.format}</span>
+                                <span>${item.format.replace(/_/g, ' ')}</span>
                                 <span>${item.audience}</span>
                                 <span>P${item.priority}</span>
                                 ${isGenerating ? '<span class="status-badge">Generating...</span>' : ''}
