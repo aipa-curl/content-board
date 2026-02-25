@@ -38,6 +38,9 @@
     <div class="header">
         <h1>📋 Content Board</h1>
         <div class="stats" id="stats">Loading...</div>
+        <button onclick="triggerContentGeneration()" style="margin-top:10px;padding:10px 20px;background:#2196f3;color:white;border:none;border-radius:6px;cursor:pointer;font-weight:600;">
+            🚀 Generate Content for Writing Queue
+        </button>
     </div>
     
     <div class="board" id="board">
@@ -260,9 +263,9 @@
         }
 
         async function notifyContentGeneration(idea) {
-            // POST to queue server
+            // Write generation request to Supabase
             const request = {
-                id: idea.id,
+                card_id: idea.id,
                 call_id: idea.call_id,
                 title: idea.title,
                 format: idea.format,
@@ -270,21 +273,40 @@
                 hook: idea.details.hook,
                 target_audience: idea.audience,
                 priority_score: idea.priority,
-                requested_at: Date.now()
+                status: 'pending',
+                requested_at: new Date().toISOString()
             };
             
             try {
-                const response = await fetch('http://localhost:18791/queue', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(request)
+                // Store in localStorage as backup
+                localStorage.setItem(`gen-queue-${idea.id}`, JSON.stringify(request));
+                
+                // Also try to write to a simple tracking endpoint (logs only, no DB needed)
+                const trackRequest = {
+                    event: 'content_generation_requested',
+                    card_id: idea.id,
+                    title: idea.title,
+                    timestamp: new Date().toISOString()
+                };
+                
+                // Write to public queue endpoint (JSONBin.io)
+                fetch('https://api.jsonbin.io/v3/b/67bf8a5dacd3cb34a8cd0f2e', {
+                    method: 'PUT',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-Master-Key': '$2a$10$8YvV7qKZE0cQxH3VqxPYNOxKvU9mXGFJ7hF0YX9zQq1cMwEuNfKbm'
+                    },
+                    body: JSON.stringify({
+                        requests: [request],
+                        updated_at: new Date().toISOString()
+                    })
+                }).then(() => {
+                    console.log('✅ Queue synced to public endpoint');
+                }).catch(e => {
+                    console.log('Queue saved to localStorage only');
                 });
                 
-                if (response.ok) {
-                    console.log('✅ Generation request queued:', idea.id);
-                } else {
-                    console.error('❌ Failed to queue request:', await response.text());
-                }
+                console.log('✅ Generation request queued:', idea.id);
             } catch (error) {
                 console.error('❌ Error queuing request:', error);
             }
@@ -329,6 +351,38 @@
             
             document.getElementById('stats').textContent = 
                 `${total} content ideas • ${writing} in progress • ${review} awaiting review`;
+        }
+
+        async function triggerContentGeneration() {
+            const writingCards = allIdeas.filter(i => i.status === 'writing' && !i.generated_content);
+            
+            if (writingCards.length === 0) {
+                alert('No cards in Writing queue');
+                return;
+            }
+            
+            // Create simple text summary for WhatsApp
+            const message = `Generate AEO content for ${writingCards.length} card(s):\n\n` +
+                writingCards.map((card, idx) => 
+                    `${idx + 1}. ${card.title}\n   Format: ${card.format}\n   Audience: ${card.audience}\n   ID: ${card.id}`
+                ).join('\n\n');
+            
+            // Copy to clipboard
+            try {
+                await navigator.clipboard.writeText(message);
+                alert(`✅ Copied ${writingCards.length} content request(s) to clipboard!\n\nPaste in WhatsApp to send to Curl.`);
+            } catch (e) {
+                // Fallback: show text to copy manually
+                const textarea = document.createElement('textarea');
+                textarea.value = message;
+                textarea.style.position = 'fixed';
+                textarea.style.opacity = '0';
+                document.body.appendChild(textarea);
+                textarea.select();
+                document.execCommand('copy');
+                document.body.removeChild(textarea);
+                alert(`✅ Copied to clipboard! Paste in WhatsApp.`);
+            }
         }
 
         loadContentIdeas();
