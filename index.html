@@ -20,17 +20,17 @@
         .column.review h2 { border-color: #ff9800; }
         .column.scheduled h2 { border-color: #9c27b0; }
         .column.published h2 { border-color: #4caf50; }
-        .card { background: #fafafa; border-radius: 8px; padding: 12px; margin-bottom: 10px; cursor: move; border-left: 3px solid #ddd; transition: all 0.2s; user-select: none; -webkit-user-select: none; touch-action: none; }
+        .card { background: #fafafa; border-radius: 8px; padding: 14px; margin-bottom: 12px; cursor: move; border-left: 3px solid #ddd; transition: all 0.2s; user-select: none; -webkit-user-select: none; touch-action: none; min-height: 180px; }
         .card:hover { transform: translateY(-2px); box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
         .card.dragging { opacity: 0.5; }
-        .card.high-priority { border-left-color: #f44336; }
+        .card.high-priority { border-left-color: #f44336; background: #fff5f5; }
         .card.generating { border-left-color: #2196f3; animation: pulse 2s infinite; }
         @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.7; } }
-        .card-title { font-weight: 600; font-size: 13px; margin-bottom: 8px; color: #333; line-height: 1.3; }
-        .card-detail { font-size: 11px; color: #666; margin: 6px 0; line-height: 1.4; }
-        .card-detail-label { font-weight: 600; color: #888; text-transform: uppercase; font-size: 10px; margin-top: 8px; }
-        .card-meta { display: flex; gap: 6px; font-size: 10px; color: #888; flex-wrap: wrap; margin-top: 8px; }
-        .card-meta span { background: #eee; padding: 2px 6px; border-radius: 10px; }
+        .card-title { font-weight: 600; font-size: 13px; margin-bottom: 6px; color: #333; line-height: 1.4; }
+        .card-detail { font-size: 11px; color: #555; margin: 4px 0 8px 0; line-height: 1.5; }
+        .card-detail-label { font-weight: 700; color: #666; font-size: 10px; margin-top: 10px; margin-bottom: 4px; display: block; }
+        .card-meta { display: flex; gap: 6px; font-size: 10px; color: #888; flex-wrap: wrap; margin-top: 12px; padding-top: 10px; border-top: 1px solid #eee; }
+        .card-meta span { background: #e0e0e0; padding: 3px 8px; border-radius: 10px; }
         .card-meta .status-badge { background: #2196f3; color: white; font-weight: 600; }
         .loading { text-align: center; padding: 40px; color: #888; }
         .error { text-align: center; padding: 40px; color: #f44336; background: #ffebee; border-radius: 8px; margin: 20px; }
@@ -100,10 +100,23 @@
                             ? JSON.parse(call.content_angles)
                             : call.content_angles || [];
                         
+                        // Parse pain points and insights
+                        const painPoints = typeof call.pain_points === 'string' 
+                            ? JSON.parse(call.pain_points) 
+                            : call.pain_points || [];
+                        const productInsights = typeof call.product_insights === 'string'
+                            ? JSON.parse(call.product_insights)
+                            : call.product_insights || [];
+                        
                         angles.forEach((angle, idx) => {
                             const ideaId = `${call.call_id}-${idx}`;
                             const savedStatus = localStorage.getItem(`card-status-${ideaId}`) || 'ideas';
                             const savedContent = localStorage.getItem(`card-content-${ideaId}`);
+                            
+                            // Get relevant pain point (first one, or most relevant)
+                            const painPoint = painPoints[0] || null;
+                            // Get relevant insight (first one, or most relevant)
+                            const insight = productInsights[0] || null;
                             
                             allIdeas.push({
                                 id: ideaId,
@@ -116,7 +129,12 @@
                                 priority: call.priority_score || 5,
                                 status: savedStatus,
                                 generated_content: savedContent,
-                                details: angle
+                                details: angle,
+                                painPoint: painPoint,
+                                insight: insight,
+                                sentiment: call.sentiment,
+                                outcome: call.outcome,
+                                customer_segment: call.customer_segment
                             });
                         });
                     } catch (e) {}
@@ -159,26 +177,46 @@
                         const topicDetail = item.details.topic_detail || '';
                         const topicCategory = item.details.topic_category ? item.details.topic_category.replace(/_/g, ' ') : '';
                         
+                        // Customer quote and pain point
+                        const customerQuote = item.painPoint?.direct_quote || '';
+                        const painPointDesc = item.painPoint?.description || '';
+                        const severity = item.painPoint?.severity || '';
+                        
+                        // Business insight
+                        const insightText = item.insight?.insight || '';
+                        const impact = item.insight?.impact || '';
+                        
                         return `
                         <div class="card ${item.priority >= 7 ? 'high-priority' : ''} ${isGenerating ? 'generating' : ''}" 
                              data-id="${item.id}" 
                              draggable="true">
-                            <div class="card-detail-label">Hook</div>
-                            <div class="card-title">${hook}</div>
                             
-                            ${topicCategory ? `
-                                <div class="card-detail-label" style="margin-top:8px;">Topic</div>
-                                <div class="card-detail">${topicCategory}</div>
+                            ${customerQuote ? `
+                                <div class="card-detail-label">💬 Customer Quote</div>
+                                <div class="card-detail" style="font-style:italic;background:#fff3cd;padding:6px;border-radius:4px;margin-bottom:8px;">"${customerQuote}"</div>
                             ` : ''}
                             
+                            ${painPointDesc ? `
+                                <div class="card-detail-label">😤 Pain Point ${severity ? `(${severity})` : ''}</div>
+                                <div class="card-detail" style="color:#d32f2f;margin-bottom:8px;">${painPointDesc}</div>
+                            ` : ''}
+                            
+                            <div class="card-detail-label">💡 Content Angle</div>
+                            <div class="card-title">${hook}</div>
+                            
                             ${topicDetail ? `
-                                <div class="card-detail-label" style="margin-top:8px;">Detail</div>
                                 <div class="card-detail">${topicDetail}</div>
+                            ` : ''}
+                            
+                            ${insightText ? `
+                                <div class="card-detail-label" style="margin-top:8px;">📊 Business Insight ${impact ? `(${impact} impact)` : ''}</div>
+                                <div class="card-detail" style="color:#1976d2;">${insightText}</div>
                             ` : ''}
                             
                             <div class="card-meta">
                                 <span>${item.format.replace(/_/g, ' ')}</span>
                                 <span>${item.audience}</span>
+                                <span>${item.customer_segment || ''}</span>
                                 <span>P${item.priority}</span>
                                 ${isGenerating ? '<span class="status-badge">Generating...</span>' : ''}
                             </div>
