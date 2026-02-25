@@ -20,7 +20,7 @@
         .column.review h2 { border-color: #ff9800; }
         .column.scheduled h2 { border-color: #9c27b0; }
         .column.published h2 { border-color: #4caf50; }
-        .card { background: #fafafa; border-radius: 8px; padding: 12px; margin-bottom: 10px; cursor: pointer; border-left: 3px solid #ddd; transition: all 0.2s; }
+        .card { background: #fafafa; border-radius: 8px; padding: 12px; margin-bottom: 10px; cursor: pointer; border-left: 3px solid #ddd; transition: all 0.2s; user-select: none; -webkit-user-select: none; -webkit-touch-callout: none; -webkit-tap-highlight-color: transparent; }
         .card:hover { transform: translateY(-2px); box-shadow: 0 4px 12px rgba(0,0,0,0.1); background: #fff; }
         .card.dragging { opacity: 0.5; }
         .card.high-priority { border-left-color: #f44336; }
@@ -185,7 +185,6 @@
                         return `
                         <div class="card ${item.priority >= 7 ? 'high-priority' : ''} ${isGenerating ? 'generating' : ''}" 
                              data-id="${item.id}" 
-                             draggable="true"
                              onclick="openCard('${item.id}')">
                             <div class="card-title">${item.title}</div>
                             <div class="card-meta">
